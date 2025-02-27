@@ -144,7 +144,7 @@ async function handleMockResponse(request: NextRequest, body?: Record<string, st
         }]
       });
     }
-  } catch (error) {
+  } catch (_) {
     // If we can't parse the request, return a generic mock
     return NextResponse.json({
       from: 'zh',

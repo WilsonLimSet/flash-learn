@@ -6,7 +6,7 @@ export default function OfflinePage() {
   return (
     <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold mb-4">You're Offline</h1>
+        <h1 className="text-2xl font-bold mb-4">You&apos;re Offline</h1>
         <p className="mb-6">
           It looks like you're not connected to the internet. Some features may not be available.
         </p>
