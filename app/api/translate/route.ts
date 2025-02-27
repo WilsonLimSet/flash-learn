@@ -13,10 +13,13 @@ function md5(text: string): string {
 interface TranslationResponse {
   from: string;
   to: string;
-  trans_result: Array<{
+  trans_result?: Array<{
     src: string;
     dst: string;
+    src_tts?: string;
   }>;
+  error_code?: string | number;
+  error_msg?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -64,7 +67,7 @@ export async function POST(request: NextRequest) {
       return handleMockResponse(request, body);
     }
     
-    const data = await response.json();
+    const data: TranslationResponse = await response.json();
     
     // Check for API errors
     if (data.error_code) {
@@ -91,23 +94,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data);
     
   } catch (error) {
-    // And remove unused variables or add a comment to ignore them
-    // For example:
+    // Log the error for debugging
     console.error("Translation error:", error);
     return handleMockResponse(request);
   }
 }
 
 // Helper function to handle mock responses
-function handleMockResponse(request: NextRequest, body?: any) {
+async function handleMockResponse(request: NextRequest, body?: Record<string, string>) {
   try {
     // If we have the body already parsed, use it
-    const requestBody = body || request.json();
+    const requestBody = body || (await request.json());
     const text = requestBody.text || '';
     const type = requestBody.type || 'translation';
     
     console.log('Using mock response for:', { text, type });
-    
     // Generate proper pinyin for the text
     const properPinyin = convertToPinyin(text);
     

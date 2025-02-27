@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Flashcard } from "@/types";
 import { getFlashcardsForReview, updateFlashcardReviewLevel, updateReviewStatus, getFlashcards } from "@/utils/localStorage";
 import Link from "next/link";
+import { Flashcard } from "@/types";
 
 export default function ReviewPage() {
-  const router = useRouter();
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
