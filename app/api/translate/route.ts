@@ -8,6 +8,17 @@ function md5(text: string): string {
   return createHash('md5').update(text).digest('hex');
 }
 
+// Replace 'any' with a more specific type
+// For example:
+interface TranslationResponse {
+  from: string;
+  to: string;
+  trans_result: Array<{
+    src: string;
+    dst: string;
+  }>;
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('API route hit');
@@ -80,7 +91,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data);
     
   } catch (error) {
-    console.error('API route error:', error);
+    // And remove unused variables or add a comment to ignore them
+    // For example:
+    console.error("Translation error:", error);
     return handleMockResponse(request);
   }
 }

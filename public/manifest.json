@@ -1,19 +1,20 @@
 {
-  "name": "FlashLearn",
+  "name": "FlashLearn Chinese",
   "short_name": "FlashLearn",
-  "description": "Chinese vocabulary flashcards with spaced repetition",
+  "description": "Learn Chinese vocabulary with spaced repetition flashcards",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

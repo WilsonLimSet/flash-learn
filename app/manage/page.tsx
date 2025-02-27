@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { getFlashcards, deleteFlashcard, updateFlashcard } from "@/utils/localStorage";
 import { Flashcard } from "@/types";
 import Link from "next/link";
 
 export default function ManagePage() {
-  const router = useRouter();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);

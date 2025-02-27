@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from "uuid";
 import { addFlashcard } from "@/utils/localStorage";
 import { translateFromChinese } from "@/utils/translation";
 import { Flashcard } from "@/types";
-import Link from "next/link";
 
 export default function CreatePage() {
   const router = useRouter();
