@@ -19,6 +19,7 @@ export default function HomePage() {
     pinyin: string;
     english: string;
   } | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Check if the input is valid Chinese text
   const isValidChineseText = (text: string): boolean => {
@@ -46,6 +47,7 @@ export default function HomePage() {
   const handleTranslate = async () => {
     // Reset error state
     setError(null);
+    setSaveSuccess(false);
     
     if (!word.trim()) {
       setError("Please enter a word or phrase");
@@ -86,7 +88,18 @@ export default function HomePage() {
     };
     
     addFlashcard(newCard);
-    router.push("/manage");
+    
+    // Show success message
+    setSaveSuccess(true);
+    
+    // Clear the form for a new entry
+    setWord("");
+    setTranslation(null);
+    
+    // Hide success message after 3 seconds
+    setTimeout(() => {
+      setSaveSuccess(false);
+    }, 3000);
   };
 
   return (
@@ -131,6 +144,12 @@ export default function HomePage() {
         {error && (
           <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4">
             {error}
+          </div>
+        )}
+        
+        {saveSuccess && (
+          <div className="bg-green-100 text-green-700 p-3 rounded-md mb-4">
+            Flashcard saved successfully!
           </div>
         )}
         

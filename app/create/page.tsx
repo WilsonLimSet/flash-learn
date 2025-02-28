@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { addFlashcard } from "@/utils/localStorage";
 import { translateFromChinese } from "@/utils/translation";
 import { Flashcard } from "@/types";
 
 export default function CreatePage() {
-  const router = useRouter();
   const [word, setWord] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +15,7 @@ export default function CreatePage() {
     pinyin: string;
     english: string;
   } | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Function to check if text contains Chinese characters
   const containsChinese = (text: string): boolean => {
@@ -28,6 +27,7 @@ export default function CreatePage() {
   const handleTranslate = async () => {
     // Reset error state
     setError(null);
+    setSaveSuccess(false);
     
     if (!word.trim()) {
       setError("Please enter a word or phrase");
@@ -68,7 +68,18 @@ export default function CreatePage() {
     };
     
     addFlashcard(newCard);
-    router.push("/manage");
+    
+    // Show success message
+    setSaveSuccess(true);
+    
+    // Clear the form for a new entry
+    setWord("");
+    setTranslation(null);
+    
+    // Hide success message after 3 seconds
+    setTimeout(() => {
+      setSaveSuccess(false);
+    }, 3000);
   };
 
   return (
@@ -104,6 +115,12 @@ export default function CreatePage() {
         {error && (
           <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4">
             {error}
+          </div>
+        )}
+        
+        {saveSuccess && (
+          <div className="bg-green-100 text-green-700 p-3 rounded-md mb-4">
+            Flashcard saved successfully!
           </div>
         )}
         
