@@ -42,8 +42,8 @@ export default function ReviewPage() {
     // Update the card's review level
     updateFlashcardReviewLevel(currentCard.id, successful);
     
+    // If successful, mark as reviewed and move to next card
     if (successful) {
-      // If successful, mark as reviewed and move to next card
       const newReviewed = new Set(reviewedCards);
       newReviewed.add(currentCard.id);
       setReviewedCards(newReviewed);

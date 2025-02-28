@@ -118,49 +118,48 @@ export function getFlashcard(id: string): Flashcard | null {
   return cards.find(card => card.id === id) || null;
 }
 
-// Update a flashcard's review level
+/**
+ * Updates a flashcard's review level based on whether the review was successful
+ * @param id The flashcard ID
+ * @param successful Whether the review was successful
+ */
 export function updateFlashcardReviewLevel(id: string, successful: boolean): void {
-  const cards = getFlashcards();
-  const cardIndex = cards.findIndex(card => card.id === id);
+  const flashcards = getFlashcards();
+  const cardIndex = flashcards.findIndex(card => card.id === id);
   
   if (cardIndex === -1) return;
   
-  const card = cards[cardIndex];
-  let newLevel = card.reviewLevel;
+  const card = flashcards[cardIndex];
   
+  // Update the review level
   if (successful) {
-    // If successful, increase the level (up to a maximum of 5)
-    newLevel = Math.min(newLevel + 1, 5);
+    // If successful, move up one level (max level is 5)
+    card.reviewLevel = Math.min(card.reviewLevel + 1, 5);
   } else {
-    // If unsuccessful, reset to level 0
-    newLevel = 0;
+    // If unsuccessful, move down one level (min level is 0)
+    card.reviewLevel = Math.max(card.reviewLevel - 1, 0);
   }
   
-  // Calculate next review date based on the new level
+  // Calculate the next review date based on the new level
   const today = new Date();
   const nextReview = new Date(today);
   
-  // Use our new pattern
+  // Set the next review date based on the new level
   let daysToAdd = 0;
-  switch(newLevel) {
+  switch(card.reviewLevel) {
     case 0: daysToAdd = 0; break;    // today
     case 1: daysToAdd = 1; break;    // tomorrow
     case 2: daysToAdd = 2; break;    // in 2 days
     case 3: daysToAdd = 4; break;    // in 4 days
     case 4: daysToAdd = 8; break;    // in 8 days
     case 5: daysToAdd = 14; break;   // in 14 days
-    default: daysToAdd = newLevel;   // fallback
+    default: daysToAdd = card.reviewLevel; // fallback
   }
   
   nextReview.setDate(today.getDate() + daysToAdd);
+  card.nextReviewDate = nextReview.toISOString().split('T')[0];
   
-  // Update the card
-  cards[cardIndex] = {
-    ...card,
-    reviewLevel: newLevel,
-    nextReviewDate: nextReview.toISOString().split('T')[0]
-  };
-  
-  // Save back to localStorage
-  localStorage.setItem('flashcards', JSON.stringify(cards));
+  // Update the flashcard in localStorage
+  flashcards[cardIndex] = card;
+  localStorage.setItem('flashcards', JSON.stringify(flashcards));
 } 
