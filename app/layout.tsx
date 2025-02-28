@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   title: "FlashLearn Chinese",
   description: "Learn Chinese vocabulary with spaced repetition flashcards",
   manifest: "/manifest.json",
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/icons/apple-touch-icon.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -62,8 +67,8 @@ export default function RootLayout({
             `,
           }}
         />
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -71,7 +76,11 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
-        {children}
+        <Navigation />
+        <main className="min-h-screen bg-fl-gray">
+          {children}
+        </main>
+        <OfflineDetector />
         <InstallPrompt />
       </body>
     </html>
