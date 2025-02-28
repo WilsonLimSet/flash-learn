@@ -103,16 +103,9 @@ export default function ReviewPage() {
         <h1 className="text-2xl font-bold mb-6 text-center text-black">Review Complete!</h1>
         
         <div className="text-center mb-8 text-black">
-          <p className="mb-4 text-black">You've reviewed all your due flashcards.</p>
+          <p className="mb-4 text-black">You've reviewed all your due flashcards for today.</p>
           
           <div className="flex flex-col space-y-4 mt-8">
-            <Link href="/" className="bg-fl-red text-white py-3 px-4 rounded-md hover:bg-fl-red/90 text-center">
-              Create New Flashcards
-            </Link>
-            
-            <Link href="/manage" className="bg-fl-yellow-DEFAULT text-black py-3 px-4 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-center">
-              Manage Flashcards
-            </Link>
           </div>
         </div>
       </div>

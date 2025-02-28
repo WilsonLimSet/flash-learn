@@ -91,7 +91,6 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
-      <h1 className="text-2xl font-bold mb-6 text-fl-red">FlashLearn Chinese</h1>
       
       <div className="mb-8">
         <div className="mb-4">
@@ -108,7 +107,7 @@ export default function HomePage() {
               className={`flex-1 p-3 border rounded-l-md text-lg text-black ${
                 !isValidChinese && word.trim() !== "" ? "border-red-500 bg-red-50" : ""
               }`}
-              placeholder="e.g. 你好"
+              placeholder="e.g. 塞翁失马"
             />
             <button
               onClick={handleTranslate}

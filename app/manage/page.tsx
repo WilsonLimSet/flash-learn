@@ -262,18 +262,18 @@ export default function ManagePage() {
                     <button
                       key={level}
                       onClick={() => setEditValues({...editValues, reviewLevel: level})}
-                      className={`px-3 py-2 rounded-md text-sm ${
+                      className={`px-2 py-1 rounded-md text-sm ${
                         editValues.reviewLevel === level 
                           ? 'bg-fl-red text-white' 
                           : 'bg-gray-200 text-black hover:bg-gray-300'
                       }`}
                     >
-                      {level}: {getLevelLabel(level)}
+                      {level}
                     </button>
                   ))}
                 </div>
                 <p className="mt-2 text-sm text-gray-600">
-                  Review {getLevelDays(editValues.reviewLevel)}
+                  {getLevelLabel(editValues.reviewLevel)} - Review {getLevelDays(editValues.reviewLevel)}
                 </p>
               </div>
               <div className="flex space-x-2">
@@ -303,13 +303,17 @@ export default function ManagePage() {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleEdit(card)}
-                    className="text-fl-red hover:text-fl-red/80"
+                    className="bg-fl-yellow-DEFAULT text-black py-1 px-3 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-sm"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(card.id)}
-                    className="text-red-500 hover:text-red-700"
+                    className={`${
+                      confirmDelete === card.id 
+                        ? "bg-red-600 text-white" 
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    } py-1 px-3 rounded-md text-sm`}
                   >
                     {confirmDelete === card.id ? "Confirm" : "Delete"}
                   </button>
@@ -347,9 +351,7 @@ export default function ManagePage() {
       </div>
       
       <div className="mb-6">
-        <Link href="/" className="block w-full bg-fl-red text-white py-3 rounded-md hover:bg-fl-red/90 font-medium text-center">
-          Create New Flashcard
-        </Link>
+       
       </div>
       
       {/* Search and Sort Controls */}
@@ -391,14 +393,126 @@ export default function ManagePage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <List
-            height={600}
-            width="100%"
-            itemCount={sortedCards.length}
-            itemSize={150} // Adjust based on your card height
-          >
-            {CardRow}
-          </List>
+          {/* If we're editing a card, use regular mapping instead of virtualized list */}
+          {editingCard ? (
+            currentCards.map(card => (
+              <div key={card.id} className="border rounded-md p-4 mb-2">
+                {editingCard === card.id ? (
+                  // Edit mode
+                  <div>
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-black mb-1">Chinese</label>
+                      <input
+                        type="text"
+                        value={editValues.chinese}
+                        onChange={(e) => setEditValues({...editValues, chinese: e.target.value})}
+                        className="w-full p-2 border rounded-md text-black"
+                      />
+                    </div>
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-black mb-1">Pinyin</label>
+                      <input
+                        type="text"
+                        value={editValues.pinyin}
+                        onChange={(e) => setEditValues({...editValues, pinyin: e.target.value})}
+                        className="w-full p-2 border rounded-md text-black"
+                      />
+                    </div>
+                    <div className="mb-2">
+                      <label className="block text-sm font-medium text-black mb-1">English</label>
+                      <input
+                        type="text"
+                        value={editValues.english}
+                        onChange={(e) => setEditValues({...editValues, english: e.target.value})}
+                        className="w-full p-2 border rounded-md text-black"
+                      />
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-black mb-2">Review Level</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[0, 1, 2, 3, 4, 5].map(level => (
+                          <button
+                            key={level}
+                            onClick={() => setEditValues({...editValues, reviewLevel: level})}
+                            className={`px-2 py-1 rounded-md text-sm ${
+                              editValues.reviewLevel === level 
+                                ? 'bg-fl-red text-white' 
+                                : 'bg-gray-200 text-black hover:bg-gray-300'
+                            }`}
+                          >
+                            {level}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-sm text-gray-600">
+                        {getLevelLabel(editValues.reviewLevel)} - Review {getLevelDays(editValues.reviewLevel)}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleSaveEdit(card)}
+                        className="bg-fl-salmon text-white py-1 px-3 rounded-md hover:bg-fl-salmon/90 text-sm"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="bg-gray-200 text-black py-1 px-3 rounded-md hover:bg-gray-300 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // View mode
+                  <>
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="text-xl font-bold text-black">{card.chinese}</h3>
+                        <p className="text-black">{card.pinyin}</p>
+                        <p className="text-black">{card.english}</p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleEdit(card)}
+                          className="bg-fl-yellow-DEFAULT text-black py-1 px-3 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(card.id)}
+                          className={`${
+                            confirmDelete === card.id 
+                              ? "bg-red-600 text-white" 
+                              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                          } py-1 px-3 rounded-md text-sm`}
+                        >
+                          {confirmDelete === card.id ? "Confirm" : "Delete"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-sm text-black">
+                      <div className="flex items-center">
+                        <span className="mr-2">Level {card.reviewLevel}: {getLevelLabel(card.reviewLevel)}</span>
+                        <span className="text-gray-600">(Review {getLevelDays(card.reviewLevel)})</span>
+                      </div>
+                      <p className="text-black">Next review: {card.nextReviewDate}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))
+          ) : (
+            // Use virtualized list when not editing
+            <List
+              height={600}
+              width="100%"
+              itemCount={sortedCards.length}
+              itemSize={150}
+            >
+              {CardRow}
+            </List>
+          )}
         </div>
       )}
       

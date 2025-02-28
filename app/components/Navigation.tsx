@@ -49,7 +49,7 @@ export default function Navigation() {
   return (
     <nav className="bg-fl-red text-white p-4 sticky top-0 z-10">
       <div className="container mx-auto flex justify-between items-center">
-        <Link href="/" className="text-xl font-bold">
+        <Link href="/" className="text-xl font-bold font-serif">
           FlashLearn
         </Link>
         
