@@ -22,7 +22,6 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
     apple: '/icons/apple-touch-icon.png',
   },
   appleWebApp: {
@@ -68,7 +67,7 @@ export default function RootLayout({
             `,
           }}
         />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />

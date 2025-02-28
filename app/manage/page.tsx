@@ -22,7 +22,7 @@ export default function ManagePage() {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const cardsPerPage = 10; // Show 10 cards per page
+  const cardsPerPage = 5; // Show 5 cards per page instead of 10
 
   useEffect(() => {
     // Load flashcards from localStorage
@@ -178,8 +178,8 @@ export default function ManagePage() {
     if (totalPages <= 1) return null;
     
     return (
-      <div className="flex justify-center mt-8 mb-4">
-        <nav className="inline-block">
+      <div className="mt-10 mb-6">
+        <nav className="flex justify-center">
           <ul className="flex space-x-2">
             {currentPage > 1 && (
               <li>
@@ -282,13 +282,18 @@ export default function ManagePage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-0">
+        <div className="flex flex-col gap-8">
           {currentCards.map(card => (
-            <div key={card.id} className="border-2 border-gray-200 rounded-md p-3 mb-6 shadow-sm overflow-hidden bg-white">
+            <div key={card.id} className={`border-2 ${editingCard === card.id ? 'border-fl-red' : 'border-gray-200'} rounded-md p-4 shadow-md bg-white`}>
+              {editingCard === card.id && (
+                <div className="bg-fl-red text-white text-xs font-bold px-2 py-1 rounded-sm mb-2 inline-block">
+                  Editing
+                </div>
+              )}
               {editingCard === card.id ? (
                 // Edit mode
                 <div>
-                  <div className="mb-2">
+                  <div className="mb-3">
                     <label className="block text-sm font-medium text-black mb-1">Chinese</label>
                     <input
                       type="text"
@@ -297,7 +302,7 @@ export default function ManagePage() {
                       className="w-full p-2 border rounded-md text-black text-base"
                     />
                   </div>
-                  <div className="mb-2">
+                  <div className="mb-3">
                     <label className="block text-sm font-medium text-black mb-1">Pinyin</label>
                     <input
                       type="text"
@@ -306,7 +311,7 @@ export default function ManagePage() {
                       className="w-full p-2 border rounded-md text-black text-base"
                     />
                   </div>
-                  <div className="mb-2">
+                  <div className="mb-3">
                     <label className="block text-sm font-medium text-black mb-1">English</label>
                     <input
                       type="text"
@@ -353,40 +358,40 @@ export default function ManagePage() {
                 </div>
               ) : (
                 // View mode
-                <>
-                  <div className="flex flex-col sm:flex-row justify-between items-start mb-2">
-                    <div className="mb-2 sm:mb-0">
-                      <h3 className="text-xl font-bold text-black">{card.chinese}</h3>
-                      <p className="text-black">{card.pinyin}</p>
-                      <p className="text-black">{card.english}</p>
-                    </div>
-                    <div className="flex space-x-2 w-full sm:w-auto">
-                      <button
-                        onClick={() => handleEdit(card)}
-                        className="flex-1 sm:flex-none bg-fl-yellow-DEFAULT text-black py-1 px-3 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(card.id)}
-                        className={`flex-1 sm:flex-none ${
-                          confirmDelete === card.id 
-                            ? "bg-red-600 text-white" 
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        } py-1 px-3 rounded-md text-sm`}
-                      >
-                        {confirmDelete === card.id ? "Confirm" : "Delete"}
-                      </button>
-                    </div>
+                <div>
+                  <div className="mb-3">
+                    <h3 className="text-xl font-bold text-black">{card.chinese}</h3>
+                    <p className="text-black">{card.pinyin}</p>
+                    <p className="text-black">{card.english}</p>
                   </div>
-                  <div className="text-sm text-black">
+                  
+                  <div className="text-sm text-black mb-3">
                     <div className="flex flex-wrap items-center">
                       <span className="mr-2">Level {card.reviewLevel}: {getLevelLabel(card.reviewLevel)}</span>
                       <span className="text-gray-600">(Review {getLevelDays(card.reviewLevel)})</span>
                     </div>
                     <p className="text-black">Next review: {card.nextReviewDate}</p>
                   </div>
-                </>
+                  
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEdit(card)}
+                      className="flex-1 bg-fl-yellow-DEFAULT text-black py-1 px-3 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-sm"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(card.id)}
+                      className={`flex-1 ${
+                        confirmDelete === card.id 
+                          ? "bg-red-600 text-white" 
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      } py-1 px-3 rounded-md text-sm`}
+                    >
+                      {confirmDelete === card.id ? "Confirm" : "Delete"}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           ))}
