@@ -34,6 +34,11 @@ export default function ManagePage() {
     setCardsForReview(reviewCards.length);
   }, []);
 
+  useEffect(() => {
+    // Reset to page 1 when search or sort changes
+    setCurrentPage(1);
+  }, [searchTerm, sortByLevel, sortDirection]);
+
   const handleDelete = (id: string) => {
     if (confirmDelete === id) {
       deleteFlashcard(id);
@@ -163,7 +168,7 @@ export default function ManagePage() {
   const indexOfLastCard = currentPage * cardsPerPage;
   const indexOfFirstCard = indexOfLastCard - cardsPerPage;
   const currentCards = sortedCards.slice(indexOfFirstCard, indexOfLastCard);
-  const totalPages = Math.ceil(sortedCards.length / cardsPerPage);
+  const totalPages = Math.max(1, Math.ceil(sortedCards.length / cardsPerPage));
 
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
@@ -173,8 +178,8 @@ export default function ManagePage() {
     if (totalPages <= 1) return null;
     
     return (
-      <div className="flex justify-center mt-6">
-        <nav>
+      <div className="flex justify-center mt-8 mb-4">
+        <nav className="inline-block">
           <ul className="flex space-x-2">
             {currentPage > 1 && (
               <li>
@@ -219,18 +224,18 @@ export default function ManagePage() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
+    <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black">
       <h1 className="text-2xl font-bold mb-6 text-black">Manage Flashcards</h1>
       
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+      <div className="bg-white rounded-lg shadow-md p-3 mb-6">
         <div className="flex justify-between items-center">
-          <div className="text-center p-3 bg-fl-salmon/10 rounded-lg flex-1 mr-2">
-            <p className="text-sm text-black font-medium mb-1">To Review</p>
-            <p className="text-2xl font-bold text-fl-red">{cardsForReview}</p>
+          <div className="text-center p-2 bg-fl-salmon/10 rounded-lg flex-1 mr-2">
+            <p className="text-xs sm:text-sm text-black font-medium mb-1">To Review</p>
+            <p className="text-xl sm:text-2xl font-bold text-fl-red">{cardsForReview}</p>
           </div>
-          <div className="text-center p-3 bg-fl-yellow/10 rounded-lg flex-1 ml-2">
-            <p className="text-sm text-black font-medium mb-1">Total Cards</p>
-            <p className="text-2xl font-bold text-fl-yellow-DEFAULT">{flashcards.length}</p>
+          <div className="text-center p-2 bg-fl-yellow/10 rounded-lg flex-1 ml-2">
+            <p className="text-xs sm:text-sm text-black font-medium mb-1">Total Cards</p>
+            <p className="text-xl sm:text-2xl font-bold text-fl-yellow-DEFAULT">{flashcards.length}</p>
           </div>
         </div>
       </div>
@@ -277,9 +282,9 @@ export default function ManagePage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-0">
           {currentCards.map(card => (
-            <div key={card.id} className="border rounded-md p-4 mb-4">
+            <div key={card.id} className="border-2 border-gray-200 rounded-md p-3 mb-6 shadow-sm overflow-hidden bg-white">
               {editingCard === card.id ? (
                 // Edit mode
                 <div>
@@ -289,7 +294,7 @@ export default function ManagePage() {
                       type="text"
                       value={editValues.chinese}
                       onChange={(e) => setEditValues({...editValues, chinese: e.target.value})}
-                      className="w-full p-2 border rounded-md text-black"
+                      className="w-full p-2 border rounded-md text-black text-base"
                     />
                   </div>
                   <div className="mb-2">
@@ -298,7 +303,7 @@ export default function ManagePage() {
                       type="text"
                       value={editValues.pinyin}
                       onChange={(e) => setEditValues({...editValues, pinyin: e.target.value})}
-                      className="w-full p-2 border rounded-md text-black"
+                      className="w-full p-2 border rounded-md text-black text-base"
                     />
                   </div>
                   <div className="mb-2">
@@ -307,12 +312,12 @@ export default function ManagePage() {
                       type="text"
                       value={editValues.english}
                       onChange={(e) => setEditValues({...editValues, english: e.target.value})}
-                      className="w-full p-2 border rounded-md text-black"
+                      className="w-full p-2 border rounded-md text-black text-base"
                     />
                   </div>
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-black mb-2">Review Level</label>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-6 gap-1">
                       {[0, 1, 2, 3, 4, 5].map(level => (
                         <button
                           key={level}
@@ -334,13 +339,13 @@ export default function ManagePage() {
                   <div className="flex space-x-2">
                     <button
                       onClick={() => handleSaveEdit(card)}
-                      className="bg-fl-salmon text-white py-1 px-3 rounded-md hover:bg-fl-salmon/90 text-sm"
+                      className="flex-1 bg-fl-salmon text-white py-1 px-3 rounded-md hover:bg-fl-salmon/90 text-sm"
                     >
                       Save
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="bg-gray-200 text-black py-1 px-3 rounded-md hover:bg-gray-300 text-sm"
+                      className="flex-1 bg-gray-200 text-black py-1 px-3 rounded-md hover:bg-gray-300 text-sm"
                     >
                       Cancel
                     </button>
@@ -349,22 +354,22 @@ export default function ManagePage() {
               ) : (
                 // View mode
                 <>
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
+                  <div className="flex flex-col sm:flex-row justify-between items-start mb-2">
+                    <div className="mb-2 sm:mb-0">
                       <h3 className="text-xl font-bold text-black">{card.chinese}</h3>
                       <p className="text-black">{card.pinyin}</p>
                       <p className="text-black">{card.english}</p>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 w-full sm:w-auto">
                       <button
                         onClick={() => handleEdit(card)}
-                        className="bg-fl-yellow-DEFAULT text-black py-1 px-3 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-sm"
+                        className="flex-1 sm:flex-none bg-fl-yellow-DEFAULT text-black py-1 px-3 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-sm"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(card.id)}
-                        className={`${
+                        className={`flex-1 sm:flex-none ${
                           confirmDelete === card.id 
                             ? "bg-red-600 text-white" 
                             : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -375,7 +380,7 @@ export default function ManagePage() {
                     </div>
                   </div>
                   <div className="text-sm text-black">
-                    <div className="flex items-center">
+                    <div className="flex flex-wrap items-center">
                       <span className="mr-2">Level {card.reviewLevel}: {getLevelLabel(card.reviewLevel)}</span>
                       <span className="text-gray-600">(Review {getLevelDays(card.reviewLevel)})</span>
                     </div>
