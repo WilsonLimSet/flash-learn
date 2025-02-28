@@ -36,59 +36,42 @@ export default function ReviewPage() {
   const handleResult = (successful: boolean) => {
     if (!currentCard) return;
 
-    // Update the card's review status in localStorage
-    updateReviewStatus(currentCard.id, successful);
-    
     // Update the card's review level
     updateFlashcardReviewLevel(currentCard.id, successful);
     
-    // If successful, mark as reviewed and move to next card
     if (successful) {
+      // If successful, remove this card from the current review session
+      // and mark it as reviewed
       const newReviewed = new Set(reviewedCards);
       newReviewed.add(currentCard.id);
       setReviewedCards(newReviewed);
       
-      // Move to next unreviewed card or finish
-      moveToNextUnreviewedCard(newReviewed);
+      // Remove the card from the current session
+      const updatedCards = cards.filter(card => card.id !== currentCard.id);
+      setCards(updatedCards);
+      
+      // Check if we've finished all cards
+      if (updatedCards.length === 0) {
+        setIsFinished(true);
+        return;
+      }
+      
+      // Adjust current index if needed
+      if (currentCardIndex >= updatedCards.length) {
+        setCurrentCardIndex(0);
+      }
+      
+      // Reset answer state
+      setShowAnswer(false);
     } else {
-      // If unsuccessful, update the card's status but keep it in the queue
-      // Move to next card, but we'll come back to this one
+      // If unsuccessful, keep the card in the queue but move to the next card
       if (currentCardIndex < cards.length - 1) {
         setCurrentCardIndex(currentCardIndex + 1);
-        setShowAnswer(false);
       } else {
-        // If we're at the end, start from the beginning to review failed cards
         setCurrentCardIndex(0);
-        setShowAnswer(false);
       }
+      setShowAnswer(false);
     }
-  };
-
-  const moveToNextUnreviewedCard = (reviewedSet: Set<string>) => {
-    // Find the next card that hasn't been reviewed yet
-    let nextIndex = currentCardIndex + 1;
-    
-    // If we've reviewed all cards, we're done
-    if (reviewedSet.size === cards.length) {
-      setIsFinished(true);
-      return;
-    }
-    
-    // Find the next unreviewed card
-    while (nextIndex < cards.length && reviewedSet.has(cards[nextIndex].id)) {
-      nextIndex++;
-    }
-    
-    // If we reached the end, start from the beginning to find unreviewed cards
-    if (nextIndex >= cards.length) {
-      nextIndex = 0;
-      while (nextIndex < currentCardIndex && reviewedSet.has(cards[nextIndex].id)) {
-        nextIndex++;
-      }
-    }
-    
-    setCurrentCardIndex(nextIndex);
-    setShowAnswer(false);
   };
 
   const toggleReviewMode = () => {
@@ -140,7 +123,7 @@ export default function ReviewPage() {
       
       <div className="flex justify-between items-center mb-6">
         <span className="mr-3 text-black font-medium">
-          {reviewedCards.size}/{cards.length} completed
+          {reviewedCards.size} completed, {cards.length} remaining
         </span>
         <button 
           onClick={toggleReviewMode}
