@@ -132,4 +132,11 @@ export default function EditPage() {
       </div>
     </div>
   );
+}
+
+export async function generateStaticParams() {
+  // Since this is a client-side app with data in localStorage,
+  // we can't know all IDs at build time.
+  // Return an empty array to satisfy the build requirement
+  return [];
 } 

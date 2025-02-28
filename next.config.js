@@ -17,8 +17,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Ensure output is set to export for static site generation
-  output: 'export',
 };
 
 module.exports = withPWA(nextConfig); 
