@@ -4,6 +4,7 @@ import "./globals.css";
 import Navigation from "./components/Navigation";
 import OfflineDetector from '@/components/OfflineDetector';
 import InstallPrompt from './components/InstallPrompt';
+import InstallInstructions from './components/InstallInstructions';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -82,6 +83,7 @@ export default function RootLayout({
         </main>
         <OfflineDetector />
         <InstallPrompt />
+        <InstallInstructions />
       </body>
     </html>
   );
