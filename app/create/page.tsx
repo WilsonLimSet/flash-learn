@@ -18,17 +18,36 @@ export default function CreatePage() {
     english: string;
   } | null>(null);
 
+  // Function to check if text contains Chinese characters
+  const containsChinese = (text: string): boolean => {
+    // Unicode ranges for Chinese characters
+    const chineseRegex = /[\u4E00-\u9FFF\u3400-\u4DBF\u20000-\u2A6DF\u2A700-\u2B73F\u2B740-\u2B81F\u2B820-\u2CEAF\uF900-\uFAFF\u2F800-\u2FA1F]/;
+    return chineseRegex.test(text);
+  };
+
   const handleTranslate = async () => {
-    if (!word.trim()) return;
+    // Reset error state
+    setError(null);
+    
+    if (!word.trim()) {
+      setError("Please enter a word or phrase");
+      return;
+    }
+    
+    // Check if input contains Chinese characters
+    if (!containsChinese(word)) {
+      console.log("No Chinese characters detected in:", word);
+      setError("Please enter text in Chinese characters");
+      return;
+    }
     
     setIsLoading(true);
-    setError(null);
     
     try {
       const result = await translateFromChinese(word);
       setTranslation(result);
-    } catch (error) {
-      console.error("Translation error:", error);
+    } catch (err) {
+      console.error("Translation error:", err);
       setError("Failed to translate. Please check your API keys or try again later.");
     } finally {
       setIsLoading(false);
@@ -54,7 +73,7 @@ export default function CreatePage() {
 
   return (
     <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
-      <h1 className="text-2xl font-bold mb-6 text-black">Create Flashcard</h1>
+      <h1 className="text-2xl font-bold mb-6 text-fl-red">FlashLearn Chinese</h1>
       
       <div className="mb-8">
         <div className="mb-4">
@@ -63,18 +82,23 @@ export default function CreatePage() {
             <input
               type="text"
               value={word}
-              onChange={(e) => setWord(e.target.value)}
+              onChange={(e) => {
+                setWord(e.target.value);
+                // Clear error when user starts typing again
+                if (error) setError(null);
+              }}
               className="flex-1 p-3 border rounded-l-md text-lg text-black"
               placeholder="e.g. 你好"
             />
             <button
               onClick={handleTranslate}
               disabled={isLoading || !word.trim()}
-              className="bg-blue-500 text-white px-4 py-2 rounded-r-md hover:bg-blue-600 disabled:bg-blue-300"
+              className="bg-fl-red text-white px-4 py-2 rounded-r-md hover:bg-fl-red/90 disabled:bg-fl-red/50"
             >
               {isLoading ? "..." : "Translate"}
             </button>
           </div>
+          <p className="mt-1 text-sm text-gray-500">Input must contain Chinese characters</p>
         </div>
         
         {error && (
@@ -93,15 +117,13 @@ export default function CreatePage() {
             
             <button
               onClick={handleSave}
-              className="w-full bg-green-500 text-white py-3 rounded-md hover:bg-green-600 font-medium"
+              className="w-full bg-fl-salmon text-white py-3 rounded-md hover:bg-fl-salmon/90 font-medium"
             >
               Save Flashcard
             </button>
           </div>
         )}
       </div>
-      
-        
     </div>
   );
 } 

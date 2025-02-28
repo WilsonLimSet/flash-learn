@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navigation from "./components/Navigation";
 import OfflineDetector from '@/components/OfflineDetector';
+import InstallPrompt from './components/InstallPrompt';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#3b82f6",
+  themeColor: "#FF5252",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -62,13 +63,16 @@ export default function RootLayout({
           }}
         />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
-        <Navigation />
-        <main className="min-h-screen bg-gray-50">
-          {children}
-        </main>
-        <OfflineDetector />
+        {children}
+        <InstallPrompt />
       </body>
     </html>
   );

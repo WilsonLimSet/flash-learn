@@ -25,7 +25,7 @@ export default function OfflineDetector() {
   if (!isOffline) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-yellow-100 text-yellow-800 p-2 text-center text-sm">
+    <div className="fixed bottom-0 left-0 right-0 bg-fl-yellow-light text-black p-2 text-center text-sm">
       You are currently offline. Some features may be limited.
     </div>
   );

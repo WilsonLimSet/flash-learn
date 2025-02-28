@@ -1,64 +1,157 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { getFlashcardsForReview, getFlashcards } from "@/utils/localStorage";
+import { useRouter } from "next/navigation";
+import { v4 as uuidv4 } from "uuid";
+import { addFlashcard } from "@/utils/localStorage";
+import { translateFromChinese } from "@/utils/translation";
+import { Flashcard } from "@/types";
+import isChinese from 'is-chinese';
 
-export default function Home() {
-  const [cardsForReview, setCardsForReview] = useState(0);
-  const [totalCards, setTotalCards] = useState(0);
+export default function HomePage() {
+  const router = useRouter();
+  const [word, setWord] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isValidChinese, setIsValidChinese] = useState(true);
+  const [translation, setTranslation] = useState<{
+    chinese: string;
+    pinyin: string;
+    english: string;
+  } | null>(null);
 
+  // Check if the input is valid Chinese text
+  const isValidChineseText = (text: string): boolean => {
+    // Allow empty strings
+    if (!text.trim()) return true;
+    
+    // Remove spaces
+    const trimmedText = text.replace(/\s+/g, '');
+    
+    // Check if all characters are Chinese
+    for (let i = 0; i < trimmedText.length; i++) {
+      if (!isChinese(trimmedText[i])) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  // Check for Chinese characters as the user types
   useEffect(() => {
-    const reviewCards = getFlashcardsForReview();
-    const allCards = getFlashcards();
-    setCardsForReview(reviewCards.length);
-    setTotalCards(allCards.length);
-  }, []);
+    setIsValidChinese(isValidChineseText(word));
+  }, [word]);
+
+  const handleTranslate = async () => {
+    // Reset error state
+    setError(null);
+    
+    if (!word.trim()) {
+      setError("Please enter a word or phrase");
+      return;
+    }
+    
+    // Check if input is valid Chinese text
+    if (!isValidChineseText(word)) {
+      console.log("Invalid Chinese input:", word);
+      setError("Please enter text in Chinese characters only");
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const result = await translateFromChinese(word);
+      setTranslation(result);
+    } catch (err) {
+      console.error("Translation error:", err);
+      setError("Failed to translate. Please check your API keys or try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = () => {
+    if (!translation) return;
+    
+    const newCard: Flashcard = {
+      id: uuidv4(),
+      chinese: translation.chinese,
+      pinyin: translation.pinyin,
+      english: translation.english,
+      reviewLevel: 0,
+      nextReviewDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString()
+    };
+    
+    addFlashcard(newCard);
+    router.push("/manage");
+  };
 
   return (
     <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
-      <div className="text-center mb-8">
-        <p className="text-black font-medium">Chinese Vocabulary Flashcards</p>
-      </div>
-
-      <div className="bg-blue-50 rounded-lg shadow-md p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Your Progress</h2>
-        <div className="flex justify-between items-center">
-          <div className="text-center p-4 bg-white rounded-lg flex-1 mr-2 shadow-sm">
-            <p className="text-sm text-black font-medium mb-1">To Review</p>
-            <p className="text-3xl font-bold text-blue-600">{cardsForReview}</p>
+      <h1 className="text-2xl font-bold mb-6 text-fl-red">FlashLearn Chinese</h1>
+      
+      <div className="mb-8">
+        <div className="mb-4">
+          <label className="block mb-2 text-black font-medium">Enter Chinese Word/Phrase</label>
+          <div className="flex">
+            <input
+              type="text"
+              value={word}
+              onChange={(e) => {
+                setWord(e.target.value);
+                // Clear error when user starts typing again
+                if (error) setError(null);
+              }}
+              className={`flex-1 p-3 border rounded-l-md text-lg text-black ${
+                !isValidChinese && word.trim() !== "" ? "border-red-500 bg-red-50" : ""
+              }`}
+              placeholder="e.g. 你好"
+            />
+            <button
+              onClick={handleTranslate}
+              disabled={isLoading || !word.trim() || !isValidChinese}
+              className="bg-fl-red text-white px-4 py-2 rounded-r-md hover:bg-fl-red/90 disabled:bg-fl-red/50"
+            >
+              {isLoading ? "..." : "Translate"}
+            </button>
           </div>
-          <div className="text-center p-4 bg-white rounded-lg flex-1 ml-2 shadow-sm">
-            <p className="text-sm text-black font-medium mb-1">Total Cards</p>
-            <p className="text-3xl font-bold">{totalCards}</p>
-          </div>
+          {!isValidChinese && word.trim() !== "" ? (
+            <p className="mt-1 text-sm text-red-600">
+              Please enter Chinese characters only
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-gray-500">
+              Input must contain Chinese characters only
+            </p>
+          )}
         </div>
+        
+        {error && (
+          <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4">
+            {error}
+          </div>
+        )}
+        
+        {translation && (
+          <div className="border rounded-md p-4 mb-4">
+            <div className="mb-3">
+              <h3 className="text-3xl font-bold mb-1 text-black">{translation.chinese}</h3>
+              <p className="text-xl text-black mb-2 font-medium">{translation.pinyin}</p>
+              <p className="text-xl text-black">{translation.english}</p>
+            </div>
+            
+            <button
+              onClick={handleSave}
+              className="w-full bg-fl-salmon text-white py-3 rounded-md hover:bg-fl-salmon/90 font-medium"
+            >
+              Save Flashcard
+            </button>
+          </div>
+        )}
       </div>
-      
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <Link 
-          href="/review" 
-          className={`bg-blue-500 text-white p-4 rounded-lg text-center hover:bg-blue-600 transition-colors ${cardsForReview === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <div className="font-bold text-lg mb-1">Review</div>
-          <div className="text-sm">{cardsForReview} cards due</div>
-        </Link>
-        <Link 
-          href="/create" 
-          className="bg-green-500 text-white p-4 rounded-lg text-center hover:bg-green-600 transition-colors"
-        >
-          <div className="font-bold text-lg mb-1">Create</div>
-          <div className="text-sm">Add new cards</div>
-        </Link>
-        <Link 
-          href="/manage" 
-          className="bg-purple-500 text-white p-4 rounded-lg text-center hover:bg-purple-600 transition-colors col-span-2"
-        >
-          <div className="font-bold text-lg mb-1">Manage</div>
-          <div className="text-sm">Edit your flashcard collection</div>
-        </Link>
-      </div>
-      
-      </div>
+    </div>
   );
 }

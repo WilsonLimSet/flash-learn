@@ -19,3 +19,42 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Add these styles to your globals.css file */
+.swipe-card-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipe-card {
+  transition: transform 0.5s ease, opacity 0.5s ease;
+}
+
+.swipe-left {
+  transform: translateX(-150%);
+  opacity: 0;
+}
+
+.swipe-right {
+  transform: translateX(150%);
+  opacity: 0;
+}
+
+.swipe-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 10px;
+  border-radius: 50%;
+  transition: opacity 0.3s ease;
+}
+
+.swipe-indicator-left {
+  left: 20px;
+  background-color: #ff5252;
+}
+
+.swipe-indicator-right {
+  right: 20px;
+  background-color: #4caf50;
+}

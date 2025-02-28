@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getFlashcardsForReview, updateFlashcardReviewLevel, updateReviewStatus, getFlashcards } from "@/utils/localStorage";
 import Link from "next/link";
 import { Flashcard } from "@/types";
+import { useSwipeable } from "react-swipeable";
 
 export default function ReviewPage() {
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -12,16 +13,14 @@ export default function ReviewPage() {
   const [isFinished, setIsFinished] = useState(false);
   const [reviewMode, setReviewMode] = useState<"chineseToEnglish" | "englishToChinese">("chineseToEnglish");
   const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set());
-
+  const [totalCards, setTotalCards] = useState(0);
+  
   useEffect(() => {
     const cardsToReview = getFlashcardsForReview();
-    console.log("Cards to review:", cardsToReview);
-    
-    // Also log all cards to compare
     const allCards = getFlashcards();
-    console.log("All cards:", allCards);
     
     setCards(cardsToReview);
+    setTotalCards(allCards.length);
     
     if (cardsToReview.length === 0) {
       setIsFinished(true);
@@ -64,39 +63,38 @@ export default function ReviewPage() {
       }
     }
   };
-  
-  const moveToNextUnreviewedCard = (reviewed: Set<string>) => {
-    // Check if all cards have been successfully reviewed
-    if (reviewed.size >= cards.length) {
+
+  const moveToNextUnreviewedCard = (reviewedSet: Set<string>) => {
+    // Find the next card that hasn't been reviewed yet
+    let nextIndex = currentCardIndex + 1;
+    
+    // If we've reviewed all cards, we're done
+    if (reviewedSet.size === cards.length) {
       setIsFinished(true);
       return;
     }
     
     // Find the next unreviewed card
-    let nextIndex = currentCardIndex;
-    let found = false;
+    while (nextIndex < cards.length && reviewedSet.has(cards[nextIndex].id)) {
+      nextIndex++;
+    }
     
-    // Try to find an unreviewed card after the current one
-    for (let i = 1; i < cards.length; i++) {
-      const checkIndex = (currentCardIndex + i) % cards.length;
-      if (!reviewed.has(cards[checkIndex].id)) {
-        nextIndex = checkIndex;
-        found = true;
-        break;
+    // If we reached the end, start from the beginning to find unreviewed cards
+    if (nextIndex >= cards.length) {
+      nextIndex = 0;
+      while (nextIndex < currentCardIndex && reviewedSet.has(cards[nextIndex].id)) {
+        nextIndex++;
       }
     }
     
-    if (found) {
-      setCurrentCardIndex(nextIndex);
-      setShowAnswer(false);
-    } else {
-      // If no unreviewed cards found, we're done
-      setIsFinished(true);
-    }
+    setCurrentCardIndex(nextIndex);
+    setShowAnswer(false);
   };
 
   const toggleReviewMode = () => {
-    setReviewMode(reviewMode === "chineseToEnglish" ? "englishToChinese" : "chineseToEnglish");
+    setReviewMode(prev => 
+      prev === "chineseToEnglish" ? "englishToChinese" : "chineseToEnglish"
+    );
   };
 
   if (isFinished) {
@@ -105,15 +103,15 @@ export default function ReviewPage() {
         <h1 className="text-2xl font-bold mb-6 text-center text-black">Review Complete!</h1>
         
         <div className="text-center mb-8 text-black">
-          <p className="mb-4 text-black">You've completed all your reviews for today.</p>
+          <p className="mb-4 text-black">You've reviewed all your due flashcards.</p>
           
           <div className="flex flex-col space-y-4 mt-8">
-            <Link href="/create" className="bg-blue-500 text-white py-3 px-4 rounded-md hover:bg-blue-600 text-center">
+            <Link href="/" className="bg-fl-red text-white py-3 px-4 rounded-md hover:bg-fl-red/90 text-center">
               Create New Flashcards
             </Link>
             
-            <Link href="/" className="bg-gray-200 text-black py-3 px-4 rounded-md hover:bg-gray-300 text-center">
-              Back to Home
+            <Link href="/manage" className="bg-fl-yellow-DEFAULT text-black py-3 px-4 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-center">
+              Manage Flashcards
             </Link>
           </div>
         </div>
@@ -130,12 +128,12 @@ export default function ReviewPage() {
           <p className="mb-4 text-black">You don't have any flashcards due for review today.</p>
           
           <div className="flex flex-col space-y-4 mt-8">
-            <Link href="/create" className="bg-blue-500 text-white py-3 px-4 rounded-md hover:bg-blue-600 text-center">
+            <Link href="/" className="bg-fl-red text-white py-3 px-4 rounded-md hover:bg-fl-red/90 text-center">
               Create New Flashcards
             </Link>
             
-            <Link href="/" className="bg-gray-200 text-black py-3 px-4 rounded-md hover:bg-gray-300 text-center">
-              Back to Home
+            <Link href="/manage" className="bg-fl-yellow-DEFAULT text-black py-3 px-4 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-center">
+              Manage Flashcards
             </Link>
           </div>
         </div>
@@ -153,13 +151,13 @@ export default function ReviewPage() {
         </span>
         <button 
           onClick={toggleReviewMode}
-          className="text-blue-600 hover:text-blue-800 font-medium"
+          className="bg-fl-yellow-DEFAULT text-black py-2 px-4 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-sm font-medium"
         >
-          {reviewMode === "chineseToEnglish" ? "中 → En" : "En → 中"}
+          {reviewMode === "chineseToEnglish" ? "Chinese → English" : "English → Chinese"}
         </button>
       </div>
       
-      <div className="bg-blue-50 rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-blue-50 rounded-lg shadow-md p-6 mb-6 relative">
         <div className="text-center mb-8">
           <p className="text-black mb-2 font-medium">Card {currentCardIndex + 1} of {cards.length}</p>
           
@@ -190,25 +188,25 @@ export default function ReviewPage() {
         ) : (
           <button
             onClick={handleShowAnswer}
-            className="w-full bg-blue-500 text-white py-3 rounded-md hover:bg-blue-600 mb-4 font-medium"
+            className="w-full bg-fl-red text-white py-3 rounded-md hover:bg-fl-red/90 font-medium mt-4"
           >
             Show Answer
           </button>
         )}
         
         {showAnswer && (
-          <div className="flex gap-3">
+          <div className="flex space-x-4 mt-4">
             <button
               onClick={() => handleResult(false)}
-              className="flex-1 bg-red-100 text-red-700 py-3 rounded-md hover:bg-red-200 font-medium"
+              className="flex-1 bg-gray-400 text-white py-3 rounded-md hover:bg-gray-500 font-medium"
             >
-              Again
+              Incorrect
             </button>
             <button
               onClick={() => handleResult(true)}
-              className="flex-1 bg-green-100 text-green-700 py-3 rounded-md hover:bg-green-200 font-medium"
+              className="flex-1 bg-fl-salmon text-white py-3 rounded-md hover:bg-fl-salmon/90 font-medium"
             >
-              Got It
+              Correct
             </button>
           </div>
         )}
