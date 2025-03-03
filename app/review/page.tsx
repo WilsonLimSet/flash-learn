@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { getFlashcardsForReview, updateFlashcardReviewLevel, updateReviewStatus, getFlashcards, getCategories, getFlashcardsByCategory } from "@/utils/localStorage";
 import Link from "next/link";
 import { Flashcard, Category } from "@/types";
-import { useSwipeable } from "react-swipeable";
 import { isRunningAsPwa, getPwaInstallMessage } from "@/utils/pwaUtils";
 import PwaWrapper from "@/app/components/PwaWrapper";
 
@@ -69,26 +68,6 @@ export default function ReviewPage() {
   const currentCard = cards.length > 0 && currentCardIndex < cards.length 
     ? cards[currentCardIndex] 
     : null;
-  
-  // Configure swipe handlers
-  const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => {
-      if (showAnswer) {
-        handleResult(false);
-      }
-    },
-    onSwipedRight: () => {
-      if (showAnswer) {
-        handleResult(true);
-      }
-    },
-    onSwipedUp: () => {
-      if (!showAnswer) {
-        setShowAnswer(true);
-      }
-    },
-    trackMouse: true
-  });
   
   const handleShowAnswer = () => {
     setShowAnswer(true);
@@ -253,7 +232,7 @@ export default function ReviewPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black" {...swipeHandlers}>
+    <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black">
       <h1 className="text-2xl font-bold mb-6 text-black">Review Flashcards</h1>
       
       {/* Stats */}
@@ -327,7 +306,7 @@ export default function ReviewPage() {
                 </div>
                 
                 {showAnswer && (
-                  <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="mt-6 pt-6 border-t border-gray-200 text-center">
                     <p className="text-lg font-medium text-black">{currentCard.english}</p>
                   </div>
                 )}
@@ -352,12 +331,12 @@ export default function ReviewPage() {
       
       {/* Actions */}
       {!isFinished && currentCard && (
-        <div>
+        <div className="flex flex-col items-center">
           {!showAnswer ? (
             <PwaWrapper>
               <button
                 onClick={handleShowAnswer}
-                className="w-full bg-gradient-to-r from-fl-salmon to-fl-red text-white py-3 rounded-lg hover:from-fl-red hover:to-fl-salmon font-medium shadow-md transition-all duration-300 flex items-center justify-center"
+                className="w-full max-w-xs bg-gradient-to-r from-fl-salmon to-fl-red text-white py-3 rounded-lg hover:from-fl-red hover:to-fl-salmon font-medium shadow-md transition-all duration-300 flex items-center justify-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                   <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="2"/>
@@ -367,11 +346,11 @@ export default function ReviewPage() {
               </button>
             </PwaWrapper>
           ) : (
-            <div className="flex space-x-3">
+            <div className="flex space-x-4 justify-center w-full">
               <PwaWrapper>
                 <button
                   onClick={() => handleResult(false)}
-                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-lg hover:from-red-600 hover:to-red-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
+                  className="flex-1 max-w-xs bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-6 rounded-lg hover:from-red-600 hover:to-red-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
@@ -382,7 +361,7 @@ export default function ReviewPage() {
               <PwaWrapper>
                 <button
                   onClick={() => handleResult(true)}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-lg hover:from-green-600 hover:to-green-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
+                  className="flex-1 max-w-xs bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-lg hover:from-green-600 hover:to-green-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -391,16 +370,6 @@ export default function ReviewPage() {
                 </button>
               </PwaWrapper>
             </div>
-          )}
-        </div>
-      )}
-      
-      {/* Swipe instructions */}
-      {!isFinished && currentCard && (
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Swipe up to show answer</p>
-          {showAnswer && (
-            <p className="mt-1">Swipe left for "Again", right for "Got It"</p>
           )}
         </div>
       )}
