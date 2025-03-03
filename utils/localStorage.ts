@@ -1,6 +1,7 @@
-import { Flashcard } from "@/types";
+import { Flashcard, Category } from "@/types";
 
 const FLASHCARDS_KEY = "flashcards";
+const CATEGORIES_KEY = "categories";
 
 export function getFlashcards(): Flashcard[] {
   if (typeof window === "undefined") return [];
@@ -162,4 +163,75 @@ export function updateFlashcardReviewLevel(id: string, successful: boolean): voi
   // Update the flashcard in localStorage
   flashcards[cardIndex] = card;
   localStorage.setItem('flashcards', JSON.stringify(flashcards));
+}
+
+// Category Management Functions
+export function getCategories(): Category[] {
+  if (typeof window === "undefined") return [];
+  
+  const storedCategories = localStorage.getItem(CATEGORIES_KEY);
+  if (!storedCategories) return [];
+  
+  try {
+    return JSON.parse(storedCategories);
+  } catch (error) {
+    console.error("Error parsing categories:", error);
+    return [];
+  }
+}
+
+export function addCategory(category: Category): void {
+  if (typeof window === "undefined") return;
+  
+  const categories = getCategories();
+  categories.push(category);
+  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+}
+
+export function updateCategory(updatedCategory: Category): void {
+  if (typeof window === "undefined") return;
+  
+  const categories = getCategories();
+  const index = categories.findIndex(category => category.id === updatedCategory.id);
+  
+  if (index !== -1) {
+    categories[index] = updatedCategory;
+    localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+  }
+}
+
+export function deleteCategory(id: string): void {
+  if (typeof window === "undefined") return;
+  
+  // Remove the category
+  const categories = getCategories();
+  const filteredCategories = categories.filter(category => category.id !== id);
+  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(filteredCategories));
+  
+  // Update all flashcards that had this category
+  const flashcards = getFlashcards();
+  const updatedFlashcards = flashcards.map(card => {
+    if (card.categoryId === id) {
+      return { ...card, categoryId: undefined };
+    }
+    return card;
+  });
+  
+  localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(updatedFlashcards));
+}
+
+export function getCategory(id: string): Category | null {
+  const categories = getCategories();
+  return categories.find(category => category.id === id) || null;
+}
+
+export function getFlashcardsByCategory(categoryId: string | null): Flashcard[] {
+  const flashcards = getFlashcards();
+  
+  if (categoryId === null) {
+    // Return cards without a category
+    return flashcards.filter(card => !card.categoryId);
+  }
+  
+  return flashcards.filter(card => card.categoryId === categoryId);
 } 

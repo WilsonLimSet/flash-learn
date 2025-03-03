@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { addFlashcard } from "@/utils/localStorage";
+import { addFlashcard, getCategories } from "@/utils/localStorage";
 import { translateFromChinese } from "@/utils/translation";
-import { Flashcard } from "@/types";
+import { Flashcard, Category } from "@/types";
+import { playChineseAudio } from "@/utils/audioUtils";
 
 export default function CreatePage() {
   const [word, setWord] = useState("");
@@ -16,6 +17,15 @@ export default function CreatePage() {
     english: string;
   } | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+
+  // Load categories on component mount
+  useEffect(() => {
+    const loadedCategories = getCategories();
+    setCategories(loadedCategories);
+  }, []);
 
   // Function to check if text contains Chinese characters
   const containsChinese = (text: string): boolean => {
@@ -64,7 +74,8 @@ export default function CreatePage() {
       english: translation.english,
       reviewLevel: 0,
       nextReviewDate: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      categoryId: selectedCategory
     };
     
     addFlashcard(newCard);
@@ -75,11 +86,25 @@ export default function CreatePage() {
     // Clear the form for a new entry
     setWord("");
     setTranslation(null);
+    setSelectedCategory(undefined);
     
     // Hide success message after 3 seconds
     setTimeout(() => {
       setSaveSuccess(false);
     }, 3000);
+  };
+
+  const handlePlayAudio = async () => {
+    if (!translation || isPlayingAudio) return;
+    
+    try {
+      setIsPlayingAudio(true);
+      await playChineseAudio(translation.chinese);
+    } catch (error) {
+      console.error("Error playing audio:", error);
+    } finally {
+      setIsPlayingAudio(false);
+    }
   };
 
   return (
@@ -127,17 +152,101 @@ export default function CreatePage() {
         {translation && (
           <div className="border rounded-md p-4 mb-4">
             <div className="mb-3">
-              <h3 className="text-3xl font-bold mb-1 text-black">{translation.chinese}</h3>
+              <div className="flex items-center mb-1">
+                <h3 className="text-3xl font-bold text-black">{translation.chinese}</h3>
+                <button
+                  onClick={handlePlayAudio}
+                  disabled={isPlayingAudio}
+                  className={`ml-3 px-3 py-1 rounded-full ${
+                    isPlayingAudio 
+                      ? 'bg-gray-300 text-gray-500' 
+                      : 'bg-fl-red text-white hover:bg-fl-red/90'
+                  }`}
+                >
+                  {isPlayingAudio ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </span>
+                  ) : (
+                    <span className="flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                  )}
+                </button>
+              </div>
               <p className="text-xl text-black mb-2 font-medium">{translation.pinyin}</p>
               <p className="text-xl text-black">{translation.english}</p>
+              
+              <div className="mt-2 p-2 bg-blue-50 text-blue-800 rounded-md text-xs">
+                <p className="flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
+                  </svg>
+                  <span>
+                    Audio uses your browser's speech synthesis. If you don't hear anything, check your volume and browser settings.
+                  </span>
+                </p>
+              </div>
             </div>
             
-            <button
-              onClick={handleSave}
-              className="w-full bg-fl-salmon text-white py-3 rounded-md hover:bg-fl-salmon/90 font-medium"
-            >
-              Save Flashcard
-            </button>
+            {/* Category selection */}
+            {categories.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">Category (optional)</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedCategory(undefined)}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      selectedCategory === undefined
+                        ? 'bg-fl-red text-white'
+                        : 'bg-gray-200 text-black hover:bg-gray-300'
+                    }`}
+                  >
+                    Uncategorized
+                  </button>
+                  
+                  {categories.map(category => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`px-3 py-1 rounded-md text-sm flex items-center ${
+                        selectedCategory === category.id
+                          ? 'bg-fl-red text-white'
+                          : 'text-black hover:bg-gray-300'
+                      }`}
+                      style={{
+                        backgroundColor: selectedCategory === category.id 
+                          ? undefined 
+                          : `${category.color}40` // 40 is for 25% opacity in hex
+                      }}
+                    >
+                      <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: category.color }}></span>
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="mt-6">
+              <button
+                onClick={handleSave}
+                className="w-full bg-gradient-to-r from-fl-salmon to-fl-red text-white py-4 rounded-md hover:from-fl-red hover:to-fl-salmon font-medium text-lg shadow-md transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Save as Flashcard
+              </button>
+              <p className="text-center text-xs text-gray-500 mt-2">
+                This card will be added to your collection for review
+              </p>
+            </div>
           </div>
         )}
       </div>

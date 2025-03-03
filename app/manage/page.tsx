@@ -1,9 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getFlashcards, deleteFlashcard, updateFlashcard, getFlashcardsForReview } from "@/utils/localStorage";
-import { Flashcard } from "@/types";
+import { 
+  getFlashcards, 
+  deleteFlashcard, 
+  updateFlashcard, 
+  getFlashcardsForReview,
+  getCategories,
+  addCategory,
+  updateCategory,
+  deleteCategory,
+  getFlashcardsByCategory
+} from "@/utils/localStorage";
+import { Flashcard, Category } from "@/types";
 import Link from "next/link";
+import { v4 as uuidv4 } from "uuid";
 
 export default function ManagePage() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -17,6 +28,7 @@ export default function ManagePage() {
     pinyin: string;
     english: string;
     reviewLevel: number;
+    categoryId?: string;
   }>({ chinese: "", pinyin: "", english: "", reviewLevel: 0 });
   const [cardsForReview, setCardsForReview] = useState(0);
   
@@ -24,10 +36,24 @@ export default function ManagePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const cardsPerPage = 5; // Show 5 cards per page instead of 10
 
+  // Category state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null | undefined>(undefined);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showCategoryManageModal, setShowCategoryManageModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("#FF5733");
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
+
   useEffect(() => {
     // Load flashcards from localStorage
     const cards = getFlashcards();
     setFlashcards(cards);
+    
+    // Load categories from localStorage
+    const cats = getCategories();
+    setCategories(cats);
     
     // Get review count
     const reviewCards = getFlashcardsForReview();
@@ -35,9 +61,48 @@ export default function ManagePage() {
   }, []);
 
   useEffect(() => {
-    // Reset to page 1 when search or sort changes
+    // Reset to page 1 when search or sort or category changes
     setCurrentPage(1);
-  }, [searchTerm, sortByLevel, sortDirection]);
+  }, [searchTerm, sortByLevel, sortDirection, selectedCategory]);
+
+  // Filter cards by search term and selected category
+  const filteredCards = flashcards.filter(card => {
+    const matchesSearch = 
+      card.chinese.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      card.pinyin.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      card.english.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // If no category is selected (undefined), show all cards
+    if (selectedCategory === undefined) {
+      return matchesSearch;
+    }
+    
+    // If "No Category" is selected (null), show only cards without a category
+    if (selectedCategory === null) {
+      return matchesSearch && !card.categoryId;
+    }
+    
+    // Otherwise, filter by the selected category
+    return matchesSearch && card.categoryId === selectedCategory;
+  });
+
+  // Sort cards
+  const sortedCards = [...filteredCards].sort((a, b) => {
+    if (sortByLevel) {
+      return sortDirection === "asc" 
+        ? a.reviewLevel - b.reviewLevel
+        : b.reviewLevel - a.reviewLevel;
+    }
+    
+    // Default sort by creation date (newest first)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  // Get current cards for pagination
+  const indexOfLastCard = currentPage * cardsPerPage;
+  const indexOfFirstCard = indexOfLastCard - cardsPerPage;
+  const currentCards = sortedCards.slice(indexOfFirstCard, indexOfLastCard);
+  const totalPages = Math.ceil(sortedCards.length / cardsPerPage);
 
   const handleDelete = (id: string) => {
     if (confirmDelete === id) {
@@ -55,7 +120,8 @@ export default function ManagePage() {
       chinese: card.chinese,
       pinyin: card.pinyin,
       english: card.english,
-      reviewLevel: card.reviewLevel
+      reviewLevel: card.reviewLevel,
+      categoryId: card.categoryId
     });
   };
 
@@ -84,7 +150,8 @@ export default function ManagePage() {
       pinyin: editValues.pinyin,
       english: editValues.english,
       reviewLevel: editValues.reviewLevel,
-      nextReviewDate: nextReview.toISOString().split('T')[0]
+      nextReviewDate: nextReview.toISOString().split('T')[0],
+      categoryId: editValues.categoryId
     };
     
     updateFlashcard(updatedCard);
@@ -142,33 +209,74 @@ export default function ManagePage() {
     }
   };
 
-  // Filter cards based on search term
-  const filteredCards = searchTerm
-    ? flashcards.filter(
-        card =>
-          card.chinese.includes(searchTerm) ||
-          card.english.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          card.pinyin.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : flashcards;
+  // Category management functions
+  const handleAddCategory = () => {
+    if (!newCategoryName.trim()) return;
+    
+    const newCategory: Category = {
+      id: uuidv4(),
+      name: newCategoryName.trim(),
+      color: newCategoryColor,
+      createdAt: new Date().toISOString()
+    };
+    
+    addCategory(newCategory);
+    setCategories([...categories, newCategory]);
+    setNewCategoryName("");
+    setShowCategoryModal(false);
+  };
 
-  // Sort the filtered cards
-  const sortedCards = [...filteredCards].sort((a, b) => {
-    if (sortByLevel) {
-      // Sort by level
-      const comparison = a.reviewLevel - b.reviewLevel;
-      return sortDirection === "asc" ? comparison : -comparison;
+  const handleUpdateCategory = () => {
+    if (!editingCategory || !newCategoryName.trim()) return;
+    
+    const updatedCategory: Category = {
+      id: editingCategory,
+      name: newCategoryName.trim(),
+      color: newCategoryColor,
+      createdAt: categories.find(c => c.id === editingCategory)?.createdAt || new Date().toISOString()
+    };
+    
+    updateCategory(updatedCategory);
+    setCategories(categories.map(c => 
+      c.id === editingCategory ? updatedCategory : c
+    ));
+    
+    setEditingCategory(null);
+    setNewCategoryName("");
+    setShowCategoryModal(false);
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    if (confirmDeleteCategory === id) {
+      deleteCategory(id);
+      setCategories(categories.filter(c => c.id !== id));
+      
+      // If the deleted category was selected, reset the selection
+      if (selectedCategory === id) {
+        setSelectedCategory(undefined);
+      }
+      
+      // Update flashcards state to reflect category removal
+      setFlashcards(flashcards.map(card => {
+        if (card.categoryId === id) {
+          return { ...card, categoryId: undefined };
+        }
+        return card;
+      }));
+      
+      setConfirmDeleteCategory(null);
     } else {
-      // Default - return in original order (by creation date)
-      return 0; // No sorting
+      setConfirmDeleteCategory(id);
     }
-  });
+  };
 
-  // Get current cards for the page
-  const indexOfLastCard = currentPage * cardsPerPage;
-  const indexOfFirstCard = indexOfLastCard - cardsPerPage;
-  const currentCards = sortedCards.slice(indexOfFirstCard, indexOfLastCard);
-  const totalPages = Math.max(1, Math.ceil(sortedCards.length / cardsPerPage));
+  const openEditCategoryModal = (category: Category) => {
+    setEditingCategory(category.id);
+    setNewCategoryName(category.name);
+    setNewCategoryColor(category.color);
+    setShowCategoryModal(true);
+    setShowCategoryManageModal(false);
+  };
 
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
@@ -223,6 +331,144 @@ export default function ManagePage() {
     );
   };
 
+  // Category modal
+  const renderCategoryModal = () => {
+    if (!showCategoryModal) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4 text-black">
+            {editingCategory ? "Edit Category" : "Add New Category"}
+          </h2>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-black mb-1">Category Name</label>
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              className="w-full p-2 border rounded-md text-black"
+              placeholder="Enter category name"
+              autoFocus
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-black mb-1">Color</label>
+            <div className="flex items-center">
+              <input
+                type="color"
+                value={newCategoryColor}
+                onChange={(e) => setNewCategoryColor(e.target.value)}
+                className="w-10 h-10 mr-2 border rounded"
+              />
+              <span className="text-black">{newCategoryColor}</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <button
+              onClick={() => {
+                setShowCategoryModal(false);
+                setEditingCategory(null);
+                setNewCategoryName("");
+                setConfirmDeleteCategory(null);
+              }}
+              className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={editingCategory ? handleUpdateCategory : handleAddCategory}
+              className="px-4 py-2 bg-fl-salmon text-white rounded-md hover:bg-fl-salmon/90"
+              disabled={!newCategoryName.trim()}
+            >
+              {editingCategory ? "Update" : "Add"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Category management modal
+  const renderCategoryManageModal = () => {
+    if (!showCategoryManageModal) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-black">Manage Categories</h2>
+            <button
+              onClick={() => {
+                setEditingCategory(null);
+                setNewCategoryName("");
+                setNewCategoryColor("#FF5733");
+                setShowCategoryModal(true);
+                setShowCategoryManageModal(false);
+              }}
+              className="text-sm px-3 py-1 bg-fl-yellow-DEFAULT text-black rounded-md hover:bg-fl-yellow-DEFAULT/90"
+            >
+              Add New
+            </button>
+          </div>
+          
+          {categories.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              No categories yet. Create your first category.
+            </div>
+          ) : (
+            <div className="max-h-80 overflow-y-auto border rounded-md mb-4">
+              {categories.map(category => (
+                <div key={category.id} className="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-gray-50">
+                  <div className="flex items-center">
+                    <span 
+                      className="w-5 h-5 rounded-full mr-3 flex-shrink-0" 
+                      style={{ backgroundColor: category.color }}
+                    ></span>
+                    <span className="text-black font-medium">{category.name}</span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => openEditCategoryModal(category)}
+                      className="text-sm px-3 py-1 bg-fl-yellow-DEFAULT text-black rounded-md hover:bg-fl-yellow-DEFAULT/90"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      className={`text-sm px-3 py-1 ${
+                        confirmDeleteCategory === category.id 
+                          ? "bg-red-700 text-white" 
+                          : "bg-red-500 text-white"
+                      } rounded-md hover:bg-red-600`}
+                    >
+                      {confirmDeleteCategory === category.id ? "Confirm" : "Delete"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="flex justify-end">
+            <button
+              onClick={() => {
+                setShowCategoryManageModal(false);
+                setConfirmDeleteCategory(null);
+              }}
+              className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black">
       <h1 className="text-2xl font-bold mb-6 text-black">Manage Flashcards</h1>
@@ -240,8 +486,84 @@ export default function ManagePage() {
         </div>
       </div>
       
+      {/* Category Management */}
       <div className="mb-6">
-       
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-black">Categories</h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => {
+                setShowCategoryManageModal(true);
+                setShowCategoryModal(false);
+                setEditingCategory(null);
+                setNewCategoryName("");
+                setNewCategoryColor("#FF5733");
+                setConfirmDeleteCategory(null);
+              }}
+              className="text-sm px-3 py-1 bg-gray-200 text-black rounded-md hover:bg-gray-300"
+            >
+              Manage Categories
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setSelectedCategory(undefined)}
+            className={`px-3 py-1 rounded-md text-sm ${
+              selectedCategory === undefined
+                ? 'bg-fl-red text-white'
+                : 'bg-gray-200 text-black hover:bg-gray-300'
+            }`}
+          >
+            All Cards
+          </button>
+          
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className={`px-3 py-1 rounded-md text-sm ${
+              selectedCategory === null
+                ? 'bg-fl-red text-white'
+                : 'bg-gray-200 text-black hover:bg-gray-300'
+            }`}
+          >
+            Uncategorized Cards
+          </button>
+          
+          {categories.map(category => (
+            <div key={category.id} className="relative group">
+              <button
+                onClick={() => setSelectedCategory(category.id)}
+                className={`px-3 py-1 rounded-md text-sm flex items-center ${
+                  selectedCategory === category.id
+                    ? 'bg-fl-red text-white'
+                    : `text-black hover:bg-gray-300`
+                }`}
+                style={{
+                  backgroundColor: selectedCategory === category.id 
+                    ? undefined 
+                    : `${category.color}40` // 40 is for 25% opacity in hex
+                }}
+              >
+                <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: category.color }}></span>
+                {category.name}
+              </button>
+            </div>
+          ))}
+          
+          <button
+            onClick={() => {
+              setEditingCategory(null);
+              setNewCategoryName("");
+              setNewCategoryColor("#FF5733");
+              setShowCategoryModal(true);
+              setShowCategoryManageModal(false);
+            }}
+            className="px-3 py-1 rounded-md text-sm bg-fl-yellow-DEFAULT/20 text-fl-yellow-DEFAULT hover:bg-fl-yellow-DEFAULT/30 flex items-center"
+          >
+            <span className="text-lg mr-1">+</span> Add Category
+          </button>
+        </div>
       </div>
       
       {/* Search and Sort Controls */}
@@ -290,6 +612,20 @@ export default function ManagePage() {
                   Editing
                 </div>
               )}
+              
+              {/* Category badge */}
+              {card.categoryId && !editingCard && (
+                <div 
+                  className="inline-block px-2 py-1 rounded-sm mb-2 text-xs font-medium"
+                  style={{ 
+                    backgroundColor: `${categories.find(c => c.id === card.categoryId)?.color}40`,
+                    color: categories.find(c => c.id === card.categoryId)?.color
+                  }}
+                >
+                  {categories.find(c => c.id === card.categoryId)?.name || 'Unknown Category'}
+                </div>
+              )}
+              
               {editingCard === card.id ? (
                 // Edit mode
                 <div>
@@ -320,6 +656,27 @@ export default function ManagePage() {
                       className="w-full p-2 border rounded-md text-black text-base"
                     />
                   </div>
+                  
+                  {/* Category selection */}
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-black mb-1">Category</label>
+                    <select
+                      value={editValues.categoryId || ""}
+                      onChange={(e) => setEditValues({
+                        ...editValues, 
+                        categoryId: e.target.value === "" ? undefined : e.target.value
+                      })}
+                      className="w-full p-2 border rounded-md text-black text-base"
+                    >
+                      <option value="">No Category</option>
+                      {categories.map(category => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-black mb-2">Review Level</label>
                     <div className="grid grid-cols-6 gap-1">
@@ -399,6 +756,8 @@ export default function ManagePage() {
       )}
       
       {renderPagination()}
+      {renderCategoryModal()}
+      {renderCategoryManageModal()}
     </div>
   );
 } 

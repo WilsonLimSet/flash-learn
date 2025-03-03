@@ -47,10 +47,18 @@ export default function Navigation() {
   };
   
   return (
-    <nav className="bg-fl-red text-white p-4 sticky top-0 z-10">
+    <nav className="bg-fl-red text-white p-4 sticky top-0 z-10 shadow-md">
       <div className="container mx-auto flex justify-between items-center">
-        <Link href="/" className="text-xl font-bold font-serif">
-          FlashLearn
+        <Link href="/" className="flex items-center group">
+          <div className="flex items-center">
+            <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-fl-salmon-light bg-clip-text text-transparent transition-all duration-300">
+              Flash
+            </span>
+            <span className="text-xl font-bold tracking-tight transition-all duration-300">
+              Learn
+            </span>
+            <span className="ml-1.5 text-[10px] bg-white text-fl-red px-1 py-0.5 rounded font-medium tracking-wide">中文</span>
+          </div>
         </Link>
         
         <div className="flex space-x-1">
@@ -61,7 +69,7 @@ export default function Navigation() {
           {isInstallable && (
             <button 
               onClick={handleInstallClick}
-              className="bg-white text-fl-red px-3 py-1 rounded-md text-sm font-medium ml-2"
+              className="bg-white text-fl-red px-3 py-1 rounded-md text-sm font-medium ml-2 hover:bg-fl-salmon/10 transition-colors duration-300"
             >
               Install App
             </button>

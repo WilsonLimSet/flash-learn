@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
-import { addFlashcard } from "@/utils/localStorage";
+import { addFlashcard, getCategories } from "@/utils/localStorage";
 import { translateFromChinese } from "@/utils/translation";
-import { Flashcard } from "@/types";
+import { Flashcard, Category } from "@/types";
 import isChinese from 'is-chinese';
 
 export default function HomePage() {
@@ -20,6 +20,14 @@ export default function HomePage() {
     english: string;
   } | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
+
+  // Load categories on component mount
+  useEffect(() => {
+    const loadedCategories = getCategories();
+    setCategories(loadedCategories);
+  }, []);
 
   // Check if the input is valid Chinese text
   const isValidChineseText = (text: string): boolean => {
@@ -84,7 +92,8 @@ export default function HomePage() {
       english: translation.english,
       reviewLevel: 0,
       nextReviewDate: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      categoryId: selectedCategory
     };
     
     addFlashcard(newCard);
@@ -103,73 +112,130 @@ export default function HomePage() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
+    <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black">
+      <h1 className="text-2xl font-bold mb-6 text-black">Flash Learn</h1>
       
-      <div className="mb-8">
-        <div className="mb-4">
-          <label className="block mb-2 text-black font-medium">Enter Chinese Word/Phrase</label>
-          <div className="flex">
-            <input
-              type="text"
-              value={word}
-              onChange={(e) => {
-                setWord(e.target.value);
-                // Clear error when user starts typing again
-                if (error) setError(null);
-              }}
-              className={`flex-1 p-3 border rounded-l-md text-lg text-black ${
-                !isValidChinese && word.trim() !== "" ? "border-red-500 bg-red-50" : ""
-              }`}
-              placeholder="e.g. 塞翁失马"
-            />
-            <button
-              onClick={handleTranslate}
-              disabled={isLoading || !word.trim() || !isValidChinese}
-              className="bg-fl-red text-white px-4 py-2 rounded-r-md hover:bg-fl-red/90 disabled:bg-fl-red/50"
-            >
-              {isLoading ? "..." : "Translate"}
-            </button>
-          </div>
-          {!isValidChinese && word.trim() !== "" ? (
-            <p className="mt-1 text-sm text-red-600">
+      <div className="mb-6">
+        <label htmlFor="word" className="block text-sm font-medium text-black mb-1">
+          Enter Chinese Word or Phrase
+        </label>
+        <div className="relative">
+          <input
+            type="text"
+            id="word"
+            value={word}
+            onChange={(e) => setWord(e.target.value)}
+            className={`w-full p-2 border rounded-md text-black ${!isValidChinese ? 'border-red-500' : 'border-gray-300'}`}
+            placeholder="输入中文"
+          />
+          {!isValidChinese && (
+            <p className="text-red-500 text-xs mt-1">
               Please enter Chinese characters only
-            </p>
-          ) : (
-            <p className="mt-1 text-sm text-gray-500">
-              Input must contain Chinese characters only
             </p>
           )}
         </div>
-        
-        {error && (
-          <div className="bg-red-100 text-red-700 p-3 rounded-md mb-4">
-            {error}
+      </div>
+      
+      <div className="mb-6">
+        <button
+          onClick={handleTranslate}
+          disabled={isLoading || !isValidChinese || !word.trim()}
+          className={`w-full py-2 px-4 rounded-md ${
+            isLoading || !isValidChinese || !word.trim()
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-fl-salmon text-white hover:bg-fl-salmon/90'
+          }`}
+        >
+          {isLoading ? 'Translating...' : 'Translate'}
+        </button>
+      </div>
+      
+      {error && (
+        <div className="mb-6 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+          {error}
+        </div>
+      )}
+      
+      {translation && (
+        <div className="mb-6 p-4 border border-gray-200 rounded-md bg-white shadow-sm">
+          <h2 className="text-lg font-semibold mb-3 text-black">Translation Result</h2>
+          
+          <div className="mb-3">
+            <p className="text-sm text-gray-600 mb-1">Chinese</p>
+            <p className="text-lg font-medium text-black">{translation.chinese}</p>
           </div>
-        )}
-        
-        {saveSuccess && (
-          <div className="bg-green-100 text-green-700 p-3 rounded-md mb-4">
-            Flashcard saved successfully!
+          
+          <div className="mb-3">
+            <p className="text-sm text-gray-600 mb-1">Pinyin</p>
+            <p className="text-black">{translation.pinyin}</p>
           </div>
-        )}
-        
-        {translation && (
-          <div className="border rounded-md p-4 mb-4">
-            <div className="mb-3">
-              <h3 className="text-3xl font-bold mb-1 text-black">{translation.chinese}</h3>
-              <p className="text-xl text-black mb-2 font-medium">{translation.pinyin}</p>
-              <p className="text-xl text-black">{translation.english}</p>
+          
+          <div className="mb-4">
+            <p className="text-sm text-gray-600 mb-1">English</p>
+            <p className="text-black">{translation.english}</p>
+          </div>
+          
+          {/* Category selection */}
+          {categories.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">Category (optional)</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedCategory(undefined)}
+                  className={`px-3 py-1 rounded-md text-sm ${
+                    selectedCategory === undefined
+                      ? 'bg-fl-red text-white'
+                      : 'bg-gray-200 text-black hover:bg-gray-300'
+                  }`}
+                >
+                  Uncategorized
+                </button>
+                
+                {categories.map(category => (
+                  <button
+                    key={category.id}
+                    onClick={() => setSelectedCategory(category.id)}
+                    className={`px-3 py-1 rounded-md text-sm flex items-center ${
+                      selectedCategory === category.id
+                        ? 'bg-fl-red text-white'
+                        : 'text-black hover:bg-gray-300'
+                    }`}
+                    style={{
+                      backgroundColor: selectedCategory === category.id 
+                        ? undefined 
+                        : `${category.color}40` // 40 is for 25% opacity in hex
+                    }}
+                  >
+                    <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: category.color }}></span>
+                    {category.name}
+                  </button>
+                ))}
+              </div>
             </div>
-            
+          )}
+          
+          <div className="mt-6">
             <button
               onClick={handleSave}
-              className="w-full bg-fl-salmon text-white py-3 rounded-md hover:bg-fl-salmon/90 font-medium"
+              className="w-full bg-gradient-to-r from-fl-salmon to-fl-red text-white py-4 rounded-md hover:from-fl-red hover:to-fl-salmon font-medium text-lg shadow-md transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center"
             >
-              Save Flashcard
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Save as Flashcard
             </button>
+            <p className="text-center text-xs text-gray-500 mt-2">
+              This card will be added to your collection for review
+            </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+      
+      {saveSuccess && (
+        <div className="mb-6 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md">
+          Flashcard saved successfully!
+        </div>
+      )}
     </div>
   );
 }
