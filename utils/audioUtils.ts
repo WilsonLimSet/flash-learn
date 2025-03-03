@@ -19,6 +19,8 @@ export async function getAudioForChinese(text: string): Promise<{ url?: string; 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ text }),
+      // Add cache: 'no-store' to prevent caching issues in PWA
+      cache: 'no-store'
     });
     
     if (!response.ok) {
@@ -34,7 +36,20 @@ export async function getAudioForChinese(text: string): Promise<{ url?: string; 
       return { useFallback: true, text: data.text || text };
     }
     
-    return { url: data.audioUrl, text: data.text || text };
+    // Test if the audio URL is accessible
+    try {
+      const audioTest = await fetch(data.audioUrl, { 
+        method: 'HEAD',
+        mode: 'no-cors', // Use no-cors mode to avoid CORS issues
+        cache: 'no-store'
+      });
+      
+      // If we get here, the URL might be accessible
+      return { url: data.audioUrl, text: data.text || text };
+    } catch (audioError) {
+      console.warn('Audio URL test failed, using fallback', audioError);
+      return { useFallback: true, text: data.text || text };
+    }
   } catch (error) {
     console.error('Error fetching audio:', error);
     // Return fallback option
@@ -61,15 +76,47 @@ function playSpeechSynthesis(text: string): Promise<void> {
     }
     
     try {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
       // Create utterance
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'zh-CN'; // Set language to Chinese
+      utterance.rate = 0.9; // Slightly slower rate for better clarity
+      utterance.pitch = 1.0; // Normal pitch
+      
+      // Try to find a Chinese voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const chineseVoice = voices.find(voice => 
+        voice.lang.includes('zh') || 
+        voice.lang.includes('cmn') || 
+        voice.name.includes('Chinese')
+      );
+      
+      if (chineseVoice) {
+        utterance.voice = chineseVoice;
+      }
       
       // Set up event handlers
-      utterance.onend = () => resolve();
+      utterance.onend = () => {
+        console.log('Speech synthesis completed');
+        resolve();
+      };
+      
       utterance.onerror = (event) => {
         console.error(`Speech synthesis error:`, event);
         resolve(); // Resolve anyway to avoid blocking the UI
+      };
+      
+      // Add a timeout in case speech synthesis hangs
+      const timeout = setTimeout(() => {
+        console.warn('Speech synthesis timeout');
+        window.speechSynthesis.cancel();
+        resolve();
+      }, 5000);
+      
+      utterance.onstart = () => {
+        clearTimeout(timeout);
       };
       
       // Speak
@@ -88,12 +135,31 @@ export async function playChineseAudio(text: string): Promise<{ played: boolean;
     return { played: false };
   }
   
+  // Check if running as PWA
+  const isPwa = isRunningAsPwa();
+  if (!isPwa) {
+    console.log('Not running as PWA, audio disabled');
+    return { played: false, pwaOnly: true };
+  }
+  
   try {
     const audioData = await getAudioForChinese(text);
     
     // If pwaOnly flag is set, return without playing
     if (audioData.pwaOnly) {
       return { played: false, pwaOnly: true };
+    }
+    
+    // Check if we're on localhost
+    const isLocalhost = typeof window !== 'undefined' && 
+                       (window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1');
+    
+    // On localhost, prefer speech synthesis for better compatibility
+    if (isLocalhost && !window.location.search.includes('forceAudioUrl=true')) {
+      console.log('Running on localhost, using speech synthesis for better compatibility');
+      await playSpeechSynthesis(audioData.text || text);
+      return { played: true };
     }
     
     if (audioData.useFallback) {
@@ -106,7 +172,11 @@ export async function playChineseAudio(text: string): Promise<{ played: boolean;
       
       // Return a promise that resolves when audio finishes playing
       return new Promise((resolve) => {
-        audio.onended = () => resolve({ played: true });
+        audio.onended = () => {
+          console.log('Audio playback completed');
+          resolve({ played: true });
+        };
+        
         audio.onerror = (e) => {
           console.error('Audio playback error, falling back to speech synthesis', e);
           // Try fallback if audio fails to play
@@ -116,13 +186,24 @@ export async function playChineseAudio(text: string): Promise<{ played: boolean;
         // Add a timeout in case the audio never loads or plays
         const timeout = setTimeout(() => {
           console.warn('Audio playback timeout, falling back to speech synthesis');
+          audio.pause();
           playSpeechSynthesis(audioData.text).then(() => resolve({ played: true }));
         }, 3000);
         
         audio.onplaying = () => {
+          console.log('Audio playback started');
           clearTimeout(timeout);
         };
         
+        // Add a canplaythrough event handler
+        audio.oncanplaythrough = () => {
+          console.log('Audio can play through');
+        };
+        
+        // Preload the audio
+        audio.preload = 'auto';
+        
+        // Play the audio with error handling
         audio.play().catch(error => {
           console.error('Audio play error:', error);
           clearTimeout(timeout);

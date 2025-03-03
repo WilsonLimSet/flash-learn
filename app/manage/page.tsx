@@ -47,6 +47,14 @@ export default function ManagePage() {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<string | null>(null);
 
+  // Add state for export modal
+  const [showExportModal, setShowExportModal] = useState(false);
+  // Add state for import modal and file
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState(false);
+
   useEffect(() => {
     // Load flashcards from localStorage
     const cards = getFlashcards();
@@ -470,6 +478,286 @@ export default function ManagePage() {
     );
   };
 
+  // Function to handle file selection for import
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setImportError(null);
+    setImportSuccess(false);
+    
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      
+      // Check if it's a JSON file
+      if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+        setImportError('Please select a valid JSON file.');
+        setImportFile(null);
+        return;
+      }
+      
+      setImportFile(file);
+    } else {
+      setImportFile(null);
+    }
+  };
+
+  // Function to import flashcards and categories
+  const handleImport = async () => {
+    if (!importFile) {
+      setImportError('Please select a file to import.');
+      return;
+    }
+    
+    try {
+      // Read the file
+      const text = await importFile.text();
+      const data = JSON.parse(text);
+      
+      // Validate the data structure
+      if (!data.flashcards || !Array.isArray(data.flashcards) || 
+          !data.categories || !Array.isArray(data.categories)) {
+        setImportError('Invalid file format. The file does not contain valid flashcards data.');
+        return;
+      }
+      
+      // Confirm with the user
+      if (window.confirm(`This will import ${data.flashcards.length} flashcards and ${data.categories.length} categories. Your existing data will be merged with the imported data. Continue?`)) {
+        // Process categories first
+        data.categories.forEach((category: Category) => {
+          // Check if category already exists
+          const existingCategories = getCategories();
+          const exists = existingCategories.some(c => c.id === category.id);
+          
+          if (!exists) {
+            // Add new category
+            const newCategory: Category = {
+              id: category.id,
+              name: category.name,
+              color: category.color,
+              createdAt: category.createdAt || new Date().toISOString()
+            };
+            addCategory(newCategory);
+          } else {
+            // Update existing category
+            updateCategory({
+              id: category.id,
+              name: category.name,
+              color: category.color,
+              createdAt: category.createdAt || new Date().toISOString()
+            });
+          }
+        });
+        
+        // Process flashcards
+        data.flashcards.forEach((flashcard: Flashcard) => {
+          // Check if flashcard already exists
+          const existingFlashcards = getFlashcards();
+          const existingIndex = existingFlashcards.findIndex(f => f.id === flashcard.id);
+          
+          if (existingIndex === -1) {
+            // Add new flashcard (using localStorage utility)
+            const { chinese, pinyin, english, categoryId, reviewLevel, nextReviewDate, createdAt } = flashcard;
+            const newCard: Flashcard = {
+              id: flashcard.id,
+              chinese,
+              pinyin,
+              english,
+              categoryId,
+              reviewLevel: reviewLevel || 0,
+              nextReviewDate: nextReviewDate || new Date().toISOString(),
+              createdAt: createdAt || new Date().toISOString()
+            };
+            
+            // We need to manually add it to localStorage since our utility functions
+            // generate new IDs
+            const allFlashcards = getFlashcards();
+            allFlashcards.push(newCard);
+            localStorage.setItem('flashcards', JSON.stringify(allFlashcards));
+          }
+        });
+        
+        // Refresh the data
+        setFlashcards(getFlashcards());
+        setCategories(getCategories());
+        setCardsForReview(getFlashcardsForReview().length);
+        
+        // Show success message
+        setImportSuccess(true);
+        
+        // Reset file input
+        setImportFile(null);
+        
+        // Close modal after a delay
+        setTimeout(() => {
+          setShowImportModal(false);
+          setImportSuccess(false);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error importing data:', error);
+      setImportError('Failed to import data. The file may be corrupted or in an invalid format.');
+    }
+  };
+
+  // Render import modal
+  const renderImportModal = () => {
+    if (!showImportModal) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4 text-black">Import Your Data</h2>
+          
+          <div className="mb-6 text-black">
+            <p className="mb-4">Select a previously exported JSON file to restore your flashcards and categories.</p>
+            
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select File
+              </label>
+              <input
+                type="file"
+                accept=".json,application/json"
+                onChange={handleFileSelect}
+                className="block w-full text-sm text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-md file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-fl-salmon file:text-white
+                  hover:file:bg-fl-salmon/90"
+              />
+              {importFile && (
+                <p className="mt-2 text-sm text-green-600">
+                  Selected: {importFile.name}
+                </p>
+              )}
+              {importError && (
+                <p className="mt-2 text-sm text-red-600">
+                  {importError}
+                </p>
+              )}
+              {importSuccess && (
+                <p className="mt-2 text-sm text-green-600 font-medium">
+                  Import successful! Your data has been restored.
+                </p>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <PwaWrapper>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+            </PwaWrapper>
+            <PwaWrapper>
+              <button
+                onClick={handleImport}
+                disabled={!importFile || importSuccess}
+                className={`px-4 py-2 rounded-md ${
+                  !importFile || importSuccess
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-fl-salmon text-white hover:bg-fl-salmon/90'
+                }`}
+              >
+                Import Data
+              </button>
+            </PwaWrapper>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Function to export flashcards and categories
+  const handleExport = () => {
+    try {
+      // Get all flashcards and categories
+      const allFlashcards = getFlashcards();
+      const allCategories = getCategories();
+      
+      // Create export data object
+      const exportData = {
+        flashcards: allFlashcards,
+        categories: allCategories,
+        exportDate: new Date().toISOString(),
+        version: "1.0"
+      };
+      
+      // Convert to JSON string
+      const jsonString = JSON.stringify(exportData, null, 2);
+      
+      // Create a blob with the data
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      
+      // Create a URL for the blob
+      const url = URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `flashlearn-export-${new Date().toISOString().split('T')[0]}.json`;
+      
+      // Append to the document, click it, and remove it
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL
+      URL.revokeObjectURL(url);
+      
+      // Close the modal
+      setShowExportModal(false);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Failed to export data. Please try again.');
+    }
+  };
+
+  // Render export modal
+  const renderExportModal = () => {
+    if (!showExportModal) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4 text-black">Export Your Data</h2>
+          
+          <div className="mb-6 text-black">
+            <p className="mb-4">This will export all your flashcards and categories as a JSON file that you can save as a backup.</p>
+            <p className="text-sm text-gray-600 mb-2">The export includes:</p>
+            <ul className="list-disc pl-5 text-sm text-gray-600 mb-4">
+              <li>All your flashcards ({flashcards.length} cards)</li>
+              <li>All your categories ({categories.length} categories)</li>
+              <li>Review levels and next review dates</li>
+            </ul>
+            <p className="text-sm text-gray-600">You can use this file to restore your data in the future.</p>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <PwaWrapper>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+            </PwaWrapper>
+            <PwaWrapper>
+              <button
+                onClick={handleExport}
+                className="px-4 py-2 bg-fl-salmon text-white rounded-md hover:bg-fl-salmon/90"
+              >
+                Export Data
+              </button>
+            </PwaWrapper>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black">
       <h1 className="text-2xl font-bold mb-6 text-black">Manage Flashcards</h1>
@@ -485,6 +773,32 @@ export default function ManagePage() {
             <p className="text-xl sm:text-2xl font-bold text-fl-yellow-DEFAULT">{flashcards.length}</p>
           </div>
         </div>
+      </div>
+      
+      {/* Export/Backup Button */}
+      <div className="mb-6 flex space-x-2">
+        <PwaWrapper>
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 shadow-md transition-all duration-300 flex items-center justify-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Export Data
+          </button>
+        </PwaWrapper>
+        <PwaWrapper>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex-1 py-3 px-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 shadow-md transition-all duration-300 flex items-center justify-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" transform="rotate(180 10 10)" />
+            </svg>
+            Import Data
+          </button>
+        </PwaWrapper>
       </div>
       
       {/* Category Management */}
@@ -759,6 +1073,7 @@ export default function ManagePage() {
       {renderPagination()}
       {renderCategoryModal()}
       {renderCategoryManageModal()}
+      {renderExportModal()}
     </div>
   );
 } 

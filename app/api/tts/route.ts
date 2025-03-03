@@ -27,12 +27,31 @@ export async function POST(request: NextRequest) {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
           'Referer': 'https://translate.google.com/',
-          'Accept': '*/*'
-        }
+          'Accept': '*/*',
+          'Origin': 'https://translate.google.com'
+        },
+        cache: 'no-store',
+        next: { revalidate: 0 }
       });
       
       if (!response.ok) {
+        console.warn(`Google TTS API error: ${response.status}`);
         throw new Error(`Failed to fetch audio: ${response.status}`);
+      }
+      
+      // If we're in a local environment, we might need to use fallback
+      // due to CORS issues with Google's TTS service
+      const isLocalhost = request.headers.get('host')?.includes('localhost') || 
+                          request.headers.get('host')?.includes('127.0.0.1');
+      
+      if (isLocalhost) {
+        console.log('Running on localhost, using fallback for better compatibility');
+        return NextResponse.json({
+          success: false,
+          useFallback: true,
+          text: body.text,
+          note: 'Using fallback on localhost for better compatibility'
+        });
       }
       
       // If we get here, the URL is valid
