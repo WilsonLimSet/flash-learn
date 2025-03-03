@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Category } from "@/types";
 import { isRunningAsPwa } from "@/utils/pwaUtils";
 import PwaWrapper from "@/app/components/PwaWrapper";
+import { translateFromChinese } from "@/utils/translation";
 
 export default function CreatePage() {
   const [chinese, setChinese] = useState("");
@@ -62,35 +63,15 @@ export default function CreatePage() {
     setIsLoading(true);
     
     try {
-      // Call translation API
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: chinese }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Translation failed: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
+      // Use the translateFromChinese utility function
+      const result = await translateFromChinese(chinese);
       
       // Set translation result
-      setTranslation({
-        chinese: data.chinese,
-        pinyin: data.pinyin,
-        english: data.english
-      });
+      setTranslation(result);
       
       // Pre-fill the form fields
-      setPinyin(data.pinyin);
-      setEnglish(data.english);
+      setPinyin(result.pinyin);
+      setEnglish(result.english);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : "Translation failed");
@@ -99,176 +80,150 @@ export default function CreatePage() {
     }
   };
   
-  // Handle save
-  const handleSave = () => {
-    // Validate input
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate form
     if (!chinese.trim() || !pinyin.trim() || !english.trim()) {
-      setError("Please fill in all fields");
+      setError("All fields are required");
       return;
     }
     
-    try {
-      // Create new flashcard
-      const newCard = {
-        id: uuidv4(),
-        chinese: chinese.trim(),
-        pinyin: pinyin.trim(),
-        english: english.trim(),
-        categoryId: selectedCategory,
-        reviewLevel: 0,
-        nextReviewDate: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      };
-      
-      // Add to storage
-      addFlashcard(newCard);
-      
-      // Reset form
-      setChinese("");
-      setPinyin("");
-      setEnglish("");
-      setTranslation(null);
-      setSelectedCategory(undefined);
-      
-      // Show success message
-      setSuccess(true);
-      
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save flashcard");
-    }
+    // Create new flashcard
+    const newFlashcard = {
+      id: uuidv4(),
+      chinese,
+      pinyin,
+      english,
+      categoryId: selectedCategory,
+      reviewLevel: 0,
+      nextReviewDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Add to storage
+    addFlashcard(newFlashcard);
+    
+    // Reset form
+    setChinese("");
+    setPinyin("");
+    setEnglish("");
+    setTranslation(null);
+    setSuccess(true);
   };
   
   return (
-    <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black">
-      <h1 className="text-2xl font-bold mb-6 text-black">Create Flashcard</h1>
-      
-      {/* Input form */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Chinese Text
-        </label>
-        <textarea
-          value={chinese}
-          onChange={(e) => setChinese(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fl-red focus:border-transparent text-black"
-          rows={2}
-          placeholder="输入中文"
-        />
-      </div>
-      
-      <div className="mb-6">
-        <PwaWrapper
-          onClick={handleTranslate}
-          className={`w-full py-3 px-4 rounded-md font-medium flex items-center justify-center ${
-            isLoading 
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-              : 'bg-fl-salmon text-white hover:bg-fl-salmon/90'
-          }`}
-        >
-          {isLoading ? 'Translating...' : 'Translate'}
-        </PwaWrapper>
-      </div>
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <h1 className="text-2xl font-bold mb-6">Create Flashcard</h1>
       
       {error && (
-        <div className="mb-6 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
       
-      {!isPwa && (
-        <div className="mb-6 p-4 border border-fl-salmon/20 rounded-md bg-fl-salmon/5 shadow-sm">
-          <h2 className="text-lg font-semibold mb-2 text-fl-salmon">Install FlashLearn App</h2>
-          <p className="text-black mb-3">
-            Install the app to access all features including:
-          </p>
-          <ul className="list-disc pl-5 mb-4 text-black">
-            <li>Translate Chinese words and phrases</li>
-            <li>Create and save flashcards</li>
-            <li>Review your flashcards with spaced repetition</li>
-            <li>Organize cards with categories</li>
-            <li>Use offline when available</li>
-          </ul>
-         
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          Flashcard created successfully!
         </div>
       )}
       
-      {translation && (
-        <div className="mb-6 p-4 border border-gray-200 rounded-md bg-white shadow-sm">
-          <h2 className="text-lg font-semibold mb-3 text-black">Translation Result</h2>
-          
-          <div className="mb-3">
-            <p className="text-sm text-gray-600 mb-1">Chinese</p>
-            <p className="text-lg font-medium text-black">{translation.chinese}</p>
-          </div>
-          
-          <div className="mb-3">
-            <p className="text-sm text-gray-600 mb-1">Pinyin</p>
-            <p className="text-lg font-medium text-black">{translation.pinyin}</p>
-          </div>
-          
-          <div className="mb-3">
-            <p className="text-sm text-gray-600 mb-1">English</p>
-            <p className="text-lg font-medium text-black">{translation.english}</p>
-          </div>
-          
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Pinyin (edit if needed)
-            </label>
-            <input
-              type="text"
-              value={pinyin}
-              onChange={(e) => setPinyin(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fl-red focus:border-transparent text-black"
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label htmlFor="chinese" className="block text-sm font-medium text-gray-700 mb-1">
+            Chinese
+          </label>
+          <div className="flex gap-2">
+            <textarea
+              id="chinese"
+              value={chinese}
+              onChange={(e) => setChinese(e.target.value)}
+              className="shadow-sm focus:ring-fl-salmon focus:border-fl-salmon block w-full sm:text-sm border-gray-300 rounded-md"
+              rows={2}
+              placeholder="Enter Chinese text"
             />
-          </div>
-          
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              English (edit if needed)
-            </label>
-            <input
-              type="text"
-              value={english}
-              onChange={(e) => setEnglish(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fl-red focus:border-transparent text-black"
-            />
-          </div>
-          
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category (optional)
-            </label>
-            <select
-              value={selectedCategory || ""}
-              onChange={(e) => setSelectedCategory(e.target.value === "" ? undefined : e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-fl-red focus:border-transparent text-black"
-            >
-              <option value="">No Category</option>
-              {categories.map(category => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="mt-6">
-            <PwaWrapper
-              onClick={handleSave}
-              className="w-full py-3 px-4 bg-fl-red text-white rounded-md hover:bg-fl-red/90 font-medium"
-            >
-              Save Flashcard
+            <PwaWrapper>
+              <button
+                type="button"
+                onClick={handleTranslate}
+                disabled={isLoading}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-fl-salmon hover:bg-fl-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fl-salmon"
+              >
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Translating...
+                  </>
+                ) : (
+                  "Translate"
+                )}
+              </button>
             </PwaWrapper>
           </div>
         </div>
-      )}
-      
-      {success && (
-        <div className="mb-6 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md">
-          Flashcard saved successfully!
+        
+        <div>
+          <label htmlFor="pinyin" className="block text-sm font-medium text-gray-700 mb-1">
+            Pinyin
+          </label>
+          <input
+            type="text"
+            id="pinyin"
+            value={pinyin}
+            onChange={(e) => setPinyin(e.target.value)}
+            className="shadow-sm focus:ring-fl-salmon focus:border-fl-salmon block w-full sm:text-sm border-gray-300 rounded-md"
+            placeholder="Pinyin will appear here after translation"
+          />
         </div>
-      )}
+        
+        <div>
+          <label htmlFor="english" className="block text-sm font-medium text-gray-700 mb-1">
+            English
+          </label>
+          <input
+            type="text"
+            id="english"
+            value={english}
+            onChange={(e) => setEnglish(e.target.value)}
+            className="shadow-sm focus:ring-fl-salmon focus:border-fl-salmon block w-full sm:text-sm border-gray-300 rounded-md"
+            placeholder="English will appear here after translation"
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+            Category (optional)
+          </label>
+          <select
+            id="category"
+            value={selectedCategory || ""}
+            onChange={(e) => setSelectedCategory(e.target.value || undefined)}
+            className="shadow-sm focus:ring-fl-salmon focus:border-fl-salmon block w-full sm:text-sm border-gray-300 rounded-md"
+          >
+            <option value="">No Category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="flex justify-end">
+          <PwaWrapper>
+            <button
+              type="submit"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-fl-salmon hover:bg-fl-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fl-salmon"
+            >
+              Create Flashcard
+            </button>
+          </PwaWrapper>
+        </div>
+      </form>
     </div>
   );
 } 
