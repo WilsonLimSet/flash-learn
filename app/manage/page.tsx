@@ -15,6 +15,7 @@ import {
 import { Flashcard, Category } from "@/types";
 import Link from "next/link";
 import { v4 as uuidv4 } from "uuid";
+import PwaWrapper from "@/app/components/PwaWrapper";
 
 export default function ManagePage() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -291,18 +292,18 @@ export default function ManagePage() {
           <ul className="flex space-x-2">
             {currentPage > 1 && (
               <li>
-                <button 
+                <PwaWrapper 
                   onClick={() => paginate(currentPage - 1)}
                   className="px-3 py-1 bg-gray-200 rounded-md hover:bg-gray-300"
                 >
                   &laquo;
-                </button>
+                </PwaWrapper>
               </li>
             )}
             
             {Array.from({ length: totalPages }, (_, i) => i + 1).map(number => (
               <li key={number}>
-                <button
+                <PwaWrapper
                   onClick={() => paginate(number)}
                   className={`px-3 py-1 rounded-md ${
                     currentPage === number
@@ -311,18 +312,18 @@ export default function ManagePage() {
                   }`}
                 >
                   {number}
-                </button>
+                </PwaWrapper>
               </li>
             ))}
             
             {currentPage < totalPages && (
               <li>
-                <button 
+                <PwaWrapper 
                   onClick={() => paginate(currentPage + 1)}
                   className="px-3 py-1 bg-gray-200 rounded-md hover:bg-gray-300"
                 >
                   &raquo;
-                </button>
+                </PwaWrapper>
               </li>
             )}
           </ul>
@@ -368,7 +369,7 @@ export default function ManagePage() {
           </div>
           
           <div className="flex justify-end space-x-2">
-            <button
+            <PwaWrapper
               onClick={() => {
                 setShowCategoryModal(false);
                 setEditingCategory(null);
@@ -378,14 +379,14 @@ export default function ManagePage() {
               className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
             >
               Cancel
-            </button>
-            <button
+            </PwaWrapper>
+            <PwaWrapper
               onClick={editingCategory ? handleUpdateCategory : handleAddCategory}
               className="px-4 py-2 bg-fl-salmon text-white rounded-md hover:bg-fl-salmon/90"
               disabled={!newCategoryName.trim()}
             >
               {editingCategory ? "Update" : "Add"}
-            </button>
+            </PwaWrapper>
           </div>
         </div>
       </div>
@@ -401,7 +402,7 @@ export default function ManagePage() {
         <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-black">Manage Categories</h2>
-            <button
+            <PwaWrapper
               onClick={() => {
                 setEditingCategory(null);
                 setNewCategoryName("");
@@ -412,7 +413,7 @@ export default function ManagePage() {
               className="text-sm px-3 py-1 bg-fl-yellow-DEFAULT text-black rounded-md hover:bg-fl-yellow-DEFAULT/90"
             >
               Add New
-            </button>
+            </PwaWrapper>
           </div>
           
           {categories.length === 0 ? (
@@ -431,13 +432,13 @@ export default function ManagePage() {
                     <span className="text-black font-medium">{category.name}</span>
                   </div>
                   <div className="flex space-x-2">
-                    <button
+                    <PwaWrapper
                       onClick={() => openEditCategoryModal(category)}
                       className="text-sm px-3 py-1 bg-fl-yellow-DEFAULT text-black rounded-md hover:bg-fl-yellow-DEFAULT/90"
                     >
                       Edit
-                    </button>
-                    <button
+                    </PwaWrapper>
+                    <PwaWrapper
                       onClick={() => handleDeleteCategory(category.id)}
                       className={`text-sm px-3 py-1 ${
                         confirmDeleteCategory === category.id 
@@ -446,7 +447,7 @@ export default function ManagePage() {
                       } rounded-md hover:bg-red-600`}
                     >
                       {confirmDeleteCategory === category.id ? "Confirm" : "Delete"}
-                    </button>
+                    </PwaWrapper>
                   </div>
                 </div>
               ))}
@@ -454,7 +455,7 @@ export default function ManagePage() {
           )}
           
           <div className="flex justify-end">
-            <button
+            <PwaWrapper
               onClick={() => {
                 setShowCategoryManageModal(false);
                 setConfirmDeleteCategory(null);
@@ -462,7 +463,7 @@ export default function ManagePage() {
               className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
             >
               Close
-            </button>
+            </PwaWrapper>
           </div>
         </div>
       </div>
@@ -491,7 +492,7 @@ export default function ManagePage() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-black">Categories</h2>
           <div className="flex space-x-2">
-            <button
+            <PwaWrapper
               onClick={() => {
                 setShowCategoryManageModal(true);
                 setShowCategoryModal(false);
@@ -503,12 +504,12 @@ export default function ManagePage() {
               className="text-sm px-3 py-1 bg-gray-200 text-black rounded-md hover:bg-gray-300"
             >
               Manage Categories
-            </button>
+            </PwaWrapper>
           </div>
         </div>
         
         <div className="flex flex-wrap gap-2 mb-4">
-          <button
+          <PwaWrapper
             onClick={() => setSelectedCategory(undefined)}
             className={`px-3 py-1 rounded-md text-sm ${
               selectedCategory === undefined
@@ -517,9 +518,9 @@ export default function ManagePage() {
             }`}
           >
             All Cards
-          </button>
+          </PwaWrapper>
           
-          <button
+          <PwaWrapper
             onClick={() => setSelectedCategory(null)}
             className={`px-3 py-1 rounded-md text-sm ${
               selectedCategory === null
@@ -528,11 +529,11 @@ export default function ManagePage() {
             }`}
           >
             Uncategorized Cards
-          </button>
+          </PwaWrapper>
           
           {categories.map(category => (
             <div key={category.id} className="relative group">
-              <button
+              <PwaWrapper
                 onClick={() => setSelectedCategory(category.id)}
                 className={`px-3 py-1 rounded-md text-sm flex items-center ${
                   selectedCategory === category.id
@@ -547,11 +548,11 @@ export default function ManagePage() {
               >
                 <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: category.color }}></span>
                 {category.name}
-              </button>
+              </PwaWrapper>
             </div>
           ))}
           
-          <button
+          <PwaWrapper
             onClick={() => {
               setEditingCategory(null);
               setNewCategoryName("");
@@ -562,7 +563,7 @@ export default function ManagePage() {
             className="px-3 py-1 rounded-md text-sm bg-fl-yellow-DEFAULT/20 text-fl-yellow-DEFAULT hover:bg-fl-yellow-DEFAULT/30 flex items-center"
           >
             <span className="text-lg mr-1">+</span> Add Category
-          </button>
+          </PwaWrapper>
         </div>
       </div>
       
@@ -580,7 +581,7 @@ export default function ManagePage() {
           </div>
           
           <div className="flex items-center mb-2">
-            <button 
+            <PwaWrapper 
               onClick={toggleLevelSort}
               className={`text-sm px-3 py-2 rounded-md ${
                 sortByLevel 
@@ -591,7 +592,7 @@ export default function ManagePage() {
               {!sortByLevel 
                 ? "Sort by Level" 
                 : `Level: ${sortDirection === "asc" ? "Low to High" : "High to Low"}`}
-            </button>
+            </PwaWrapper>
           </div>
         </div>
       )}
@@ -681,7 +682,7 @@ export default function ManagePage() {
                     <label className="block text-sm font-medium text-black mb-2">Review Level</label>
                     <div className="grid grid-cols-6 gap-1">
                       {[0, 1, 2, 3, 4, 5].map(level => (
-                        <button
+                        <PwaWrapper
                           key={level}
                           onClick={() => setEditValues({...editValues, reviewLevel: level})}
                           className={`px-2 py-1 rounded-md text-sm ${
@@ -691,7 +692,7 @@ export default function ManagePage() {
                           }`}
                         >
                           {level}
-                        </button>
+                        </PwaWrapper>
                       ))}
                     </div>
                     <p className="mt-2 text-sm text-gray-600">
@@ -699,18 +700,18 @@ export default function ManagePage() {
                     </p>
                   </div>
                   <div className="flex space-x-2">
-                    <button
+                    <PwaWrapper
                       onClick={() => handleSaveEdit(card)}
                       className="flex-1 bg-fl-salmon text-white py-1 px-3 rounded-md hover:bg-fl-salmon/90 text-sm"
                     >
                       Save
-                    </button>
-                    <button
+                    </PwaWrapper>
+                    <PwaWrapper
                       onClick={handleCancelEdit}
                       className="flex-1 bg-gray-200 text-black py-1 px-3 rounded-md hover:bg-gray-300 text-sm"
                     >
                       Cancel
-                    </button>
+                    </PwaWrapper>
                   </div>
                 </div>
               ) : (
@@ -731,13 +732,13 @@ export default function ManagePage() {
                   </div>
                   
                   <div className="flex space-x-2">
-                    <button
+                    <PwaWrapper
                       onClick={() => handleEdit(card)}
                       className="flex-1 bg-fl-yellow-DEFAULT text-black py-1 px-3 rounded-md hover:bg-fl-yellow-DEFAULT/90 text-sm"
                     >
                       Edit
-                    </button>
-                    <button
+                    </PwaWrapper>
+                    <PwaWrapper
                       onClick={() => handleDelete(card.id)}
                       className={`flex-1 ${
                         confirmDelete === card.id 
@@ -746,7 +747,7 @@ export default function ManagePage() {
                       } py-1 px-3 rounded-md text-sm`}
                     >
                       {confirmDelete === card.id ? "Confirm" : "Delete"}
-                    </button>
+                    </PwaWrapper>
                   </div>
                 </div>
               )}

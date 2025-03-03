@@ -56,11 +56,13 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error("TTS error:", error);
+    
+    // We can't access body.text here because the request parsing might have failed
     return NextResponse.json({ 
       error: 'Failed to generate speech',
       details: error instanceof Error ? error.message : String(error),
       useFallback: true,
-      text: body.text
+      text: 'Error occurred' // Use a default text since we can't access the original
     }, { 
       status: 500 
     });

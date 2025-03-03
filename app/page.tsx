@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { addFlashcard, getCategories } from "@/utils/localStorage";
 import { translateFromChinese } from "@/utils/translation";
 import { Flashcard, Category } from "@/types";
 import isChinese from 'is-chinese';
+import PwaWrapper from "@/app/components/PwaWrapper";
+import { usePwa } from "@/app/context/PwaContext";
 
 export default function HomePage() {
-  const router = useRouter();
+  const { isPwa, showInstallPrompt } = usePwa();
   const [word, setWord] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +112,12 @@ export default function HomePage() {
     }, 3000);
   };
 
+  const handleInputClick = () => {
+    if (!isPwa) {
+      showInstallPrompt();
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black">
       <h1 className="text-2xl font-bold mb-6 text-black">Flash Learn</h1>
@@ -124,35 +131,59 @@ export default function HomePage() {
             type="text"
             id="word"
             value={word}
-            onChange={(e) => setWord(e.target.value)}
-            className={`w-full p-2 border rounded-md text-black ${!isValidChinese ? 'border-red-500' : 'border-gray-300'}`}
-            placeholder="输入中文"
+            onChange={(e) => isPwa ? setWord(e.target.value) : null}
+            onClick={handleInputClick}
+            className={`w-full p-2 border rounded-md ${!isPwa ? 'bg-gray-100 cursor-not-allowed' : ''} text-black ${!isValidChinese ? 'border-red-500' : 'border-gray-300'}`}
+            placeholder={isPwa ? "输入中文" : "Install app to use this feature"}
+            disabled={!isPwa}
           />
-          {!isValidChinese && (
+          {!isValidChinese && isPwa && (
             <p className="text-red-500 text-xs mt-1">
               Please enter Chinese characters only
+            </p>
+          )}
+          {!isPwa && (
+            <p className="text-fl-salmon text-xs mt-1">
+              Install the app to use all features
             </p>
           )}
         </div>
       </div>
       
       <div className="mb-6">
-        <button
+        <PwaWrapper
           onClick={handleTranslate}
           disabled={isLoading || !isValidChinese || !word.trim()}
           className={`w-full py-2 px-4 rounded-md ${
-            isLoading || !isValidChinese || !word.trim()
+            isLoading || !isValidChinese || !word.trim() || !isPwa
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
               : 'bg-fl-salmon text-white hover:bg-fl-salmon/90'
           }`}
         >
           {isLoading ? 'Translating...' : 'Translate'}
-        </button>
+        </PwaWrapper>
       </div>
       
       {error && (
         <div className="mb-6 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
           {error}
+        </div>
+      )}
+      
+      {!isPwa && (
+        <div className="mb-6 p-4 border border-fl-salmon/20 rounded-md bg-fl-salmon/5 shadow-sm">
+          <h2 className="text-lg font-semibold mb-2 text-fl-salmon">Install FlashLearn App</h2>
+          <p className="text-black mb-3">
+            Install the app to access all features including:
+          </p>
+          <ul className="list-disc pl-5 mb-4 text-black">
+            <li>Translate Chinese words and phrases</li>
+            <li>Create and save flashcards</li>
+            <li>Review your flashcards with spaced repetition</li>
+            <li>Organize cards with categories</li>
+            <li>Use offline when available</li>
+          </ul>
+         
         </div>
       )}
       
@@ -180,7 +211,7 @@ export default function HomePage() {
             <div className="mb-4">
               <p className="text-sm text-gray-600 mb-2">Category (optional)</p>
               <div className="flex flex-wrap gap-2">
-                <button
+                <PwaWrapper
                   onClick={() => setSelectedCategory(undefined)}
                   className={`px-3 py-1 rounded-md text-sm ${
                     selectedCategory === undefined
@@ -189,10 +220,10 @@ export default function HomePage() {
                   }`}
                 >
                   Uncategorized
-                </button>
+                </PwaWrapper>
                 
                 {categories.map(category => (
-                  <button
+                  <PwaWrapper
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
                     className={`px-3 py-1 rounded-md text-sm flex items-center ${
@@ -208,14 +239,14 @@ export default function HomePage() {
                   >
                     <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: category.color }}></span>
                     {category.name}
-                  </button>
+                  </PwaWrapper>
                 ))}
               </div>
             </div>
           )}
           
           <div className="mt-6">
-            <button
+            <PwaWrapper
               onClick={handleSave}
               className="w-full bg-gradient-to-r from-fl-salmon to-fl-red text-white py-4 rounded-md hover:from-fl-red hover:to-fl-salmon font-medium text-lg shadow-md transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center"
             >
@@ -223,7 +254,7 @@ export default function HomePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Save as Flashcard
-            </button>
+            </PwaWrapper>
             <p className="text-center text-xs text-gray-500 mt-2">
               This card will be added to your collection for review
             </p>

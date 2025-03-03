@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Flashcard, Category } from "@/types";
 import { useSwipeable } from "react-swipeable";
 import { playFlashcardAudio, playChineseAudio } from "@/utils/audioUtils";
+import { isRunningAsPwa, getPwaInstallMessage } from "@/utils/pwaUtils";
+import PwaWrapper from "@/app/components/PwaWrapper";
 
 export default function ReviewPage() {
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -20,6 +22,8 @@ export default function ReviewPage() {
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [audioMode, setAudioMode] = useState<boolean>(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
+  const [showPwaMessage, setShowPwaMessage] = useState<boolean>(false);
+  const [isPwa, setIsPwa] = useState<boolean>(false);
   
   useEffect(() => {
     // Load categories
@@ -32,6 +36,11 @@ export default function ReviewPage() {
     
     // Load initial cards for review (all categories)
     loadCardsForReview();
+  }, []);
+  
+  // Check if running as PWA on mount
+  useEffect(() => {
+    setIsPwa(isRunningAsPwa());
   }, []);
   
   // Load cards for review based on selected category
@@ -88,7 +97,12 @@ export default function ReviewPage() {
     
     try {
       setIsPlayingAudio(true);
-      await playChineseAudio(currentCard.chinese);
+      const result = await playChineseAudio(currentCard.chinese);
+      
+      // If pwaOnly flag is set, show the PWA message
+      if (result.pwaOnly) {
+        setShowPwaMessage(true);
+      }
     } catch (error) {
       console.error("Error playing audio:", error);
     } finally {
@@ -144,6 +158,12 @@ export default function ReviewPage() {
   };
 
   const toggleAudioMode = () => {
+    // If not running as PWA, show the message
+    if (!isPwa) {
+      setShowPwaMessage(true);
+      return;
+    }
+    
     setAudioMode(prev => !prev);
   };
 
@@ -240,31 +260,35 @@ export default function ReviewPage() {
     return (
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center">
-          <button
-            onClick={toggleAudioMode}
-            className={`flex items-center px-3 py-2 rounded-md text-sm ${
-              audioMode
-                ? 'bg-fl-red text-white'
-                : 'bg-gray-200 text-black hover:bg-gray-300'
-            }`}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
-            </svg>
-            {audioMode ? "Audio Mode: ON" : "Audio Mode: OFF"}
-          </button>
+          <PwaWrapper>
+            <button
+              onClick={toggleAudioMode}
+              className={`flex items-center px-3 py-2 rounded-md text-sm ${
+                audioMode
+                  ? 'bg-fl-red text-white'
+                  : 'bg-gray-200 text-black hover:bg-gray-300'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828a1 1 0 010-1.415z" clipRule="evenodd" />
+              </svg>
+              {audioMode ? "Audio Mode: ON" : "Audio Mode: OFF"}
+            </button>
+          </PwaWrapper>
         </div>
         
         <div className="flex items-center">
-          <button
-            onClick={toggleReviewMode}
-            className="flex items-center px-3 py-2 rounded-md text-sm bg-gray-200 text-black hover:bg-gray-300"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-            </svg>
-            {reviewMode === "chineseToEnglish" ? "Chinese → English" : "English → Chinese"}
-          </button>
+          <PwaWrapper>
+            <button
+              onClick={toggleReviewMode}
+              className="flex items-center px-3 py-2 rounded-md text-sm bg-gray-200 text-black hover:bg-gray-300"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+              </svg>
+              {reviewMode === "chineseToEnglish" ? "Chinese → English" : "English → Chinese"}
+            </button>
+          </PwaWrapper>
         </div>
       </div>
     );
@@ -275,32 +299,61 @@ export default function ReviewPage() {
     if (!currentCard || !audioMode) return null;
     
     return (
-      <button
-        onClick={playCardAudio}
-        disabled={isPlayingAudio}
-        className={`mt-2 px-4 py-2 rounded-full ${
-          isPlayingAudio 
-            ? 'bg-gray-300 text-gray-500' 
-            : 'bg-fl-red text-white hover:bg-fl-red/90'
-        }`}
-      >
-        {isPlayingAudio ? (
-          <span className="flex items-center">
-            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Playing...
-          </span>
-        ) : (
-          <span className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-            </svg>
-            Play Audio
-          </span>
-        )}
-      </button>
+      <PwaWrapper>
+        <button
+          onClick={playCardAudio}
+          disabled={isPlayingAudio}
+          className={`mt-2 px-4 py-2 rounded-full ${
+            isPlayingAudio 
+              ? 'bg-gray-300 text-gray-500' 
+              : 'bg-fl-red text-white hover:bg-fl-red/90'
+          }`}
+        >
+          {isPlayingAudio ? (
+            <span className="flex items-center">
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Playing...
+            </span>
+          ) : (
+            <span className="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+              </svg>
+              Play Audio
+            </span>
+          )}
+        </button>
+      </PwaWrapper>
+    );
+  };
+
+  // Render the PWA install message
+  const renderPwaMessage = () => {
+    if (!showPwaMessage) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+          <h2 className="text-xl font-bold mb-4 text-black">Install FlashLearn</h2>
+          
+          <div className="mb-6 text-black">
+            <p className="mb-4">{getPwaInstallMessage()}</p>
+            <p className="text-sm text-gray-600">Audio features are only available in the installed app version.</p>
+          </div>
+          
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowPwaMessage(false)}
+              className="px-4 py-2 bg-fl-red text-white rounded-md hover:bg-fl-red/90"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      </div>
     );
   };
 
@@ -374,21 +427,23 @@ export default function ReviewPage() {
     <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-black">Review Cards</h1>
-        <button
-          onClick={toggleCategoryFilter}
-          className="flex items-center text-sm text-fl-red hover:text-fl-red/80"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-          </svg>
-          Filter
-        </button>
+        <PwaWrapper>
+          <button
+            onClick={toggleCategoryFilter}
+            className="flex items-center text-sm text-fl-red hover:text-fl-red/80"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+            </svg>
+            Filter
+          </button>
+        </PwaWrapper>
       </div>
       
       {/* Add the audio mode toggle */}
       {renderAudioModeToggle()}
       
-      {audioMode && (
+      {audioMode && isPwa && (
         <div className="mb-4 p-3 bg-blue-50 text-blue-800 rounded-md text-sm">
           <p className="flex items-start">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
@@ -432,12 +487,14 @@ export default function ReviewPage() {
           </div>
           
           {!showAnswer ? (
-            <button
-              onClick={handleShowAnswer}
-              className="w-full bg-fl-red text-white py-3 rounded-md hover:bg-fl-red/90 font-medium"
-            >
-              Show Answer
-            </button>
+            <PwaWrapper>
+              <button
+                onClick={handleShowAnswer}
+                className="w-full bg-fl-red text-white py-3 rounded-md hover:bg-fl-red/90 font-medium"
+              >
+                Show Answer
+              </button>
+            </PwaWrapper>
           ) : (
             <div>
               {reviewMode === "chineseToEnglish" ? (
@@ -454,24 +511,29 @@ export default function ReviewPage() {
               )}
               
               <div className="flex space-x-4">
-                <button
-                  onClick={() => handleResult(false)}
-                  className="flex-1 bg-gray-200 text-black py-3 rounded-md hover:bg-gray-300 font-medium"
-                >
-                  Again
-                </button>
-                <button
-                  onClick={() => handleResult(true)}
-                  className="flex-1 bg-green-500 text-white py-3 rounded-md hover:bg-green-600 font-medium"
-                >
-                  Got It
-                </button>
+                <PwaWrapper>
+                  <button
+                    onClick={() => handleResult(false)}
+                    className="flex-1 bg-gray-200 text-black py-3 rounded-md hover:bg-gray-300 font-medium"
+                  >
+                    Again
+                  </button>
+                </PwaWrapper>
+                <PwaWrapper>
+                  <button
+                    onClick={() => handleResult(true)}
+                    className="flex-1 bg-green-500 text-white py-3 rounded-md hover:bg-green-600 font-medium"
+                  >
+                    Got It
+                  </button>
+                </PwaWrapper>
               </div>
             </div>
           )}
         </div>
       )}
       
+      {renderPwaMessage()}
       {renderCategoryFilterModal()}
     </div>
   );

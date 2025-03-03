@@ -5,6 +5,8 @@ import Navigation from "./components/Navigation";
 import OfflineDetector from '@/components/OfflineDetector';
 import InstallPrompt from './components/InstallPrompt';
 import InstallInstructions from './components/InstallInstructions';
+import { Analytics } from '@vercel/analytics/react';
+import { PwaProvider } from './context/PwaContext';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -76,13 +78,16 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
-        <Navigation />
-        <main className="min-h-screen bg-fl-gray">
-          {children}
-        </main>
-        <OfflineDetector />
-        <InstallPrompt />
-        <InstallInstructions />
+        <PwaProvider>
+          <Navigation />
+          <main className="min-h-screen bg-fl-gray">
+            {children}
+          </main>
+          <OfflineDetector />
+          <InstallPrompt />
+          <InstallInstructions />
+          <Analytics />
+        </PwaProvider>
       </body>
     </html>
   );

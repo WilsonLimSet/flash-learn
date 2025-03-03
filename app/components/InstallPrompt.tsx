@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { markPwaAsInstalled } from '@/utils/pwaUtils';
 
 export default function InstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
@@ -18,6 +19,22 @@ export default function InstallPrompt() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+    // Check if app is already in standalone mode (installed)
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        ('standalone' in window.navigator && (window.navigator as any).standalone === true)) {
+      // Mark as installed
+      markPwaAsInstalled();
+    }
+
+    // Listen for app installed event
+    window.addEventListener('appinstalled', () => {
+      // Mark as installed when the app is installed
+      markPwaAsInstalled();
+      // Hide the prompt
+      setShowPrompt(false);
+      console.log('PWA was installed');
+    });
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
@@ -32,6 +49,8 @@ export default function InstallPrompt() {
     deferredPrompt.userChoice.then((choiceResult: {outcome: string}) => {
       if (choiceResult.outcome === 'accepted') {
         console.log('User accepted the install prompt');
+        // Mark as installed
+        markPwaAsInstalled();
       } else {
         console.log('User dismissed the install prompt');
       }
@@ -46,7 +65,7 @@ export default function InstallPrompt() {
       <div className="flex justify-between items-center">
         <div>
           <p className="font-medium">Install FlashLearn</p>
-          <p className="text-sm">Add to your home screen for he mobile experience</p>
+          <p className="text-sm">Add to your home screen for the best experience with audio features</p>
         </div>
         <button 
           onClick={handleInstallClick}
