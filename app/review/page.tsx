@@ -5,7 +5,6 @@ import { getFlashcardsForReview, updateFlashcardReviewLevel, updateReviewStatus,
 import Link from "next/link";
 import { Flashcard, Category } from "@/types";
 import { useSwipeable } from "react-swipeable";
-import { playFlashcardAudio, playChineseAudio } from "@/utils/audioUtils";
 import { isRunningAsPwa, getPwaInstallMessage } from "@/utils/pwaUtils";
 import PwaWrapper from "@/app/components/PwaWrapper";
 
@@ -20,8 +19,6 @@ export default function ReviewPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null | undefined>(undefined);
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
-  const [audioMode, setAudioMode] = useState<boolean>(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [showPwaMessage, setShowPwaMessage] = useState<boolean>(false);
   const [isPwa, setIsPwa] = useState<boolean>(false);
   
@@ -48,106 +45,73 @@ export default function ReviewPage() {
     let cardsToReview: Flashcard[] = [];
     
     if (selectedCategory === undefined) {
-      // All cards
+      // All categories
       cardsToReview = getFlashcardsForReview();
     } else if (selectedCategory === null) {
-      // Cards with no category
-      const allReviewCards = getFlashcardsForReview();
-      cardsToReview = allReviewCards.filter(card => !card.categoryId);
+      // No category
+      cardsToReview = getFlashcardsForReview().filter(card => !card.categoryId);
     } else {
-      // Cards from specific category
-      const categoryCards = getFlashcardsByCategory(selectedCategory);
-      const allReviewCards = getFlashcardsForReview();
-      cardsToReview = allReviewCards.filter(card => 
-        categoryCards.some(catCard => catCard.id === card.id)
-      );
+      // Specific category
+      cardsToReview = getFlashcardsForReview().filter(card => card.categoryId === selectedCategory);
     }
     
-    setCards(cardsToReview);
+    // Shuffle the cards
+    const shuffled = [...cardsToReview].sort(() => Math.random() - 0.5);
+    
+    setCards(shuffled);
     setCurrentCardIndex(0);
     setShowAnswer(false);
+    setIsFinished(shuffled.length === 0);
     setReviewedCards(new Set());
-    
-    if (cardsToReview.length === 0) {
-      setIsFinished(true);
-    } else {
-      setIsFinished(false);
-    }
   };
   
-  // When category selection changes, reload cards
-  useEffect(() => {
-    loadCardsForReview();
-  }, [selectedCategory]);
-
-  const currentCard = cards[currentCardIndex];
-
+  // Get current card
+  const currentCard = cards.length > 0 && currentCardIndex < cards.length 
+    ? cards[currentCardIndex] 
+    : null;
+  
+  // Configure swipe handlers
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      if (showAnswer) {
+        handleResult(false);
+      }
+    },
+    onSwipedRight: () => {
+      if (showAnswer) {
+        handleResult(true);
+      }
+    },
+    onSwipedUp: () => {
+      if (!showAnswer) {
+        setShowAnswer(true);
+      }
+    },
+    trackMouse: true
+  });
+  
   const handleShowAnswer = () => {
     setShowAnswer(true);
-    
-    // If in audio mode, play the audio when showing the answer
-    if (audioMode && currentCard) {
-      playCardAudio();
-    }
   };
-
-  // Function to play the current card's audio
-  const playCardAudio = async () => {
-    if (!currentCard || isPlayingAudio) return;
-    
-    try {
-      setIsPlayingAudio(true);
-      const result = await playChineseAudio(currentCard.chinese);
-      
-      // If pwaOnly flag is set, show the PWA message
-      if (result.pwaOnly) {
-        setShowPwaMessage(true);
-      }
-    } catch (error) {
-      console.error("Error playing audio:", error);
-    } finally {
-      setIsPlayingAudio(false);
-    }
-  };
-
+  
   const handleResult = (successful: boolean) => {
     if (!currentCard) return;
-
-    // Update the card's review level
+    
+    // Update review status
+    updateReviewStatus(currentCard.id, successful);
+    
+    // Update review level
     updateFlashcardReviewLevel(currentCard.id, successful);
     
-    if (successful) {
-      // If successful, remove this card from the current review session
-      // and mark it as reviewed
-      const newReviewed = new Set(reviewedCards);
-      newReviewed.add(currentCard.id);
-      setReviewedCards(newReviewed);
-      
-      // Remove the card from the current session
-      const updatedCards = cards.filter(card => card.id !== currentCard.id);
-      setCards(updatedCards);
-      
-      // Check if we've finished all cards
-      if (updatedCards.length === 0) {
-        setIsFinished(true);
-        return;
-      }
-      
-      // Adjust current index if needed
-      if (currentCardIndex >= updatedCards.length) {
-        setCurrentCardIndex(0);
-      }
-      
-      // Reset answer state
+    // Add to reviewed cards
+    setReviewedCards(prev => new Set(prev).add(currentCard.id));
+    
+    // Move to next card
+    if (currentCardIndex < cards.length - 1) {
+      setCurrentCardIndex(prev => prev + 1);
       setShowAnswer(false);
     } else {
-      // If unsuccessful, keep the card in the queue but move to the next card
-      if (currentCardIndex < cards.length - 1) {
-        setCurrentCardIndex(currentCardIndex + 1);
-      } else {
-        setCurrentCardIndex(0);
-      }
-      setShowAnswer(false);
+      setIsFinished(true);
     }
   };
 
@@ -155,16 +119,6 @@ export default function ReviewPage() {
     setReviewMode(prev => 
       prev === "chineseToEnglish" ? "englishToChinese" : "chineseToEnglish"
     );
-  };
-
-  const toggleAudioMode = () => {
-    // If not running as PWA, show the message
-    if (!isPwa) {
-      setShowPwaMessage(true);
-      return;
-    }
-    
-    setAudioMode(prev => !prev);
   };
 
   // Get category for current card
@@ -200,7 +154,7 @@ export default function ReviewPage() {
                     : 'bg-gray-200 text-black hover:bg-gray-300'
                 }`}
               >
-                All Cards
+                All Categories
               </button>
               
               <button
@@ -214,7 +168,7 @@ export default function ReviewPage() {
                     : 'bg-gray-200 text-black hover:bg-gray-300'
                 }`}
               >
-                Uncategorized Cards
+                No Category
               </button>
               
               {categories.map(category => (
@@ -224,18 +178,13 @@ export default function ReviewPage() {
                     setSelectedCategory(category.id);
                     setShowCategoryFilter(false);
                   }}
-                  className={`px-3 py-2 rounded-md text-sm flex items-center ${
+                  className={`px-3 py-2 rounded-md text-sm ${
                     selectedCategory === category.id
                       ? 'bg-fl-red text-white'
-                      : 'text-black hover:bg-gray-300'
+                      : 'bg-gray-200 text-black hover:bg-gray-300'
                   }`}
-                  style={{
-                    backgroundColor: selectedCategory === category.id 
-                      ? undefined 
-                      : `${category.color}40` // 40 is for 25% opacity in hex
-                  }}
+                  style={selectedCategory === category.id ? {} : { backgroundColor: `${category.color}20`, color: category.color }}
                 >
-                  <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: category.color }}></span>
                   {category.name}
                 </button>
               ))}
@@ -243,249 +192,167 @@ export default function ReviewPage() {
           </div>
           
           <div className="flex justify-end">
-            <button
-              onClick={() => setShowCategoryFilter(false)}
-              className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
-            >
-              Close
-            </button>
+            <PwaWrapper>
+              <button
+                onClick={() => setShowCategoryFilter(false)}
+                className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </PwaWrapper>
           </div>
         </div>
       </div>
     );
   };
 
-  // Add this to the JSX where you want to show the toggle for audio mode
-  const renderAudioModeToggle = () => {
-    return (
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center">
-          <PwaWrapper>
-            <button
-              onClick={toggleAudioMode}
-              className={`flex items-center px-3 py-2 rounded-md text-sm ${
-                audioMode
-                  ? 'bg-fl-red text-white'
-                  : 'bg-gray-200 text-black hover:bg-gray-300'
-              }`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828a1 1 0 010-1.415z" clipRule="evenodd" />
-              </svg>
-              {audioMode ? "Audio Mode: ON" : "Audio Mode: OFF"}
-            </button>
-          </PwaWrapper>
-        </div>
-        
-        <div className="flex items-center">
-          <PwaWrapper>
-            <button
-              onClick={toggleReviewMode}
-              className="flex items-center px-3 py-2 rounded-md text-sm bg-gray-200 text-black hover:bg-gray-300"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-              {reviewMode === "chineseToEnglish" ? "Chinese → English" : "English → Chinese"}
-            </button>
-          </PwaWrapper>
-        </div>
-      </div>
-    );
-  };
-
-  // Add a play button to the card
-  const renderPlayButton = () => {
-    if (!currentCard || !audioMode) return null;
-    
+  // Render the review mode toggle button
+  const renderReviewModeToggle = () => {
     return (
       <PwaWrapper>
         <button
-          onClick={playCardAudio}
-          disabled={isPlayingAudio}
-          className={`mt-2 px-4 py-2 rounded-full ${
-            isPlayingAudio 
-              ? 'bg-gray-300 text-gray-500' 
-              : 'bg-fl-red text-white hover:bg-fl-red/90'
-          }`}
+          onClick={toggleReviewMode}
+          className="flex items-center justify-center px-3 py-2 bg-white border border-gray-300 rounded-md text-black text-sm hover:bg-gray-100"
         >
-          {isPlayingAudio ? (
-            <span className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Playing...
-            </span>
+          {reviewMode === "chineseToEnglish" ? (
+            <>
+              <span className="mr-1">中文</span>
+              <span className="text-gray-400 mx-1">→</span>
+              <span className="ml-1">English</span>
+            </>
           ) : (
-            <span className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-              </svg>
-              Play Audio
-            </span>
+            <>
+              <span className="mr-1">English</span>
+              <span className="text-gray-400 mx-1">→</span>
+              <span className="ml-1">中文</span>
+            </>
           )}
         </button>
       </PwaWrapper>
     );
   };
 
-  // Render the PWA install message
-  const renderPwaMessage = () => {
-    if (!showPwaMessage) return null;
-    
+  // Render the filter button
+  const renderFilterButton = () => {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-          <h2 className="text-xl font-bold mb-4 text-black">Install FlashLearn</h2>
-          
-          <div className="mb-6 text-black">
-            <p className="mb-4">{getPwaInstallMessage()}</p>
-            <p className="text-sm text-gray-600">Audio features are only available in the installed app version.</p>
-          </div>
-          
-          <div className="flex justify-end">
-            <button
-              onClick={() => setShowPwaMessage(false)}
-              className="px-4 py-2 bg-fl-red text-white rounded-md hover:bg-fl-red/90"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      </div>
+      <PwaWrapper>
+        <button
+          onClick={toggleCategoryFilter}
+          className="flex items-center justify-center px-3 py-2 bg-white border border-gray-300 rounded-md text-black text-sm hover:bg-gray-100"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          Filter
+          {selectedCategory !== undefined && selectedCategory !== null && (
+            <span className="ml-1 w-2 h-2 rounded-full" style={{ backgroundColor: categories.find(c => c.id === selectedCategory)?.color || '#ccc' }}></span>
+          )}
+        </button>
+      </PwaWrapper>
     );
   };
 
-  if (isFinished) {
-    return (
-      <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
-        <h1 className="text-2xl font-bold mb-6 text-center text-black">Review Complete!</h1>
-        
-        <div className="text-center mb-8 text-black">
-          <p className="mb-4 text-black">
-            {selectedCategory !== undefined 
-              ? (selectedCategory === null 
-                ? "You've reviewed all uncategorized flashcards for today." 
-                : `You've reviewed all flashcards in the "${categories.find(c => c.id === selectedCategory)?.name}" category for today.`)
-              : "You've reviewed all your due flashcards for today."}
-          </p>
-          
-          <div className="mt-8">
-            <button
-              onClick={toggleCategoryFilter}
-              className="px-5 py-3 bg-gradient-to-r from-fl-yellow-DEFAULT to-fl-yellow-light text-black rounded-md hover:from-fl-yellow-light hover:to-fl-yellow-DEFAULT font-medium shadow-md transition-all duration-300 flex items-center justify-center mx-auto"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-              </svg>
-              Review Another Category
-            </button>
-          </div>
-        </div>
-        
-        {renderCategoryFilterModal()}
-      </div>
-    );
-  }
-
-  if (cards.length === 0) {
-    return (
-      <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
-        <h1 className="text-2xl font-bold mb-6 text-center text-black">No Cards to Review</h1>
-        
-        <div className="text-center mb-8 text-black">
-          <p className="mb-4 text-black">
-            {selectedCategory !== undefined 
-              ? (selectedCategory === null 
-                ? "There are no uncategorized flashcards due for review today." 
-                : `There are no flashcards in the "${categories.find(c => c.id === selectedCategory)?.name}" category due for review today.`)
-              : "You don't have any flashcards due for review today."}
-          </p>
-          
-          <div className="mt-8">
-            <button
-              onClick={toggleCategoryFilter}
-              className="px-5 py-3 bg-gradient-to-r from-fl-yellow-DEFAULT to-fl-yellow-light text-black rounded-md hover:from-fl-yellow-light hover:to-fl-yellow-DEFAULT font-medium shadow-md transition-all duration-300 flex items-center justify-center mx-auto"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-              </svg>
-              Try Another Category
-            </button>
-          </div>
-        </div>
-        
-        {renderCategoryFilterModal()}
-      </div>
-    );
-  }
-
-  const currentCategory = getCurrentCardCategory();
-
   return (
-    <div className="container mx-auto p-6 max-w-md bg-white min-h-screen text-black">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-black">Review Cards</h1>
-        <PwaWrapper>
-          <button
-            onClick={toggleCategoryFilter}
-            className="flex items-center text-sm text-fl-red hover:text-fl-red/80"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-            </svg>
-            Filter
-          </button>
-        </PwaWrapper>
+    <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black" {...swipeHandlers}>
+      <h1 className="text-2xl font-bold mb-6 text-black">Review Flashcards</h1>
+      
+      {/* Stats */}
+      <div className="bg-white rounded-lg shadow-md p-3 mb-6">
+        <div className="flex justify-between items-center">
+          <div className="text-center p-2 bg-fl-salmon/10 rounded-lg flex-1 mr-2">
+            <p className="text-xs sm:text-sm text-black font-medium mb-1">Reviewed</p>
+            <p className="text-xl sm:text-2xl font-bold text-fl-red">{reviewedCards.size}</p>
+          </div>
+          <div className="text-center p-2 bg-fl-yellow/10 rounded-lg flex-1 ml-2">
+            <p className="text-xs sm:text-sm text-black font-medium mb-1">To Review</p>
+            <p className="text-xl sm:text-2xl font-bold text-fl-yellow-DEFAULT">{cards.length}</p>
+          </div>
+        </div>
       </div>
       
-      {/* Add the audio mode toggle */}
-      {renderAudioModeToggle()}
+      {/* Controls */}
+      <div className="flex justify-between mb-6">
+        <div className="flex space-x-2">
+          {renderReviewModeToggle()}
+          {renderFilterButton()}
+        </div>
+      </div>
       
-      {audioMode && isPwa && (
-        <div className="mb-4 p-3 bg-blue-50 text-blue-800 rounded-md text-sm">
-          <p className="flex items-start">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
-            </svg>
-            <span>
-              Audio mode uses your browser's speech synthesis. If you don't hear anything, check that your volume is on and your browser supports speech synthesis.
-            </span>
-          </p>
+      {/* Finished state */}
+      {isFinished && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
+          <h2 className="text-xl font-bold mb-4 text-black">All Done!</h2>
+          <p className="mb-6 text-gray-600">You've reviewed all the cards due for today in this category.</p>
+          <div className="flex flex-col space-y-3">
+            <PwaWrapper href="/">
+              <button className="w-full py-3 px-4 bg-fl-salmon text-white rounded-md hover:bg-fl-salmon/90">
+                Create New Flashcard
+              </button>
+            </PwaWrapper>
+            <PwaWrapper>
+              <button 
+                onClick={() => {
+                  setSelectedCategory(undefined);
+                  loadCardsForReview();
+                }}
+                className="w-full py-3 px-4 bg-fl-yellow text-white rounded-md hover:bg-fl-yellow/90"
+              >
+                Review All Categories
+              </button>
+            </PwaWrapper>
+          </div>
         </div>
       )}
       
-      <div className="mb-4 text-sm text-gray-500">
-        {reviewedCards.size} of {cards.length} cards reviewed
-      </div>
-      
-      {currentCard && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6 relative">
-          {/* Category badge if available */}
+      {/* Card */}
+      {!isFinished && currentCard && (
+        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+          {/* Card header with category if available */}
           {getCurrentCardCategory() && (
             <div 
-              className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs"
-              style={{ 
-                backgroundColor: `${getCurrentCardCategory()?.color}40`,
-                color: getCurrentCardCategory()?.color
-              }}
+              className="px-4 py-2 text-sm font-medium text-white"
+              style={{ backgroundColor: getCurrentCardCategory()?.color || '#ccc' }}
             >
               {getCurrentCardCategory()?.name}
             </div>
           )}
           
-          <div className="mb-6">
+          {/* Card content */}
+          <div className="p-6">
             {reviewMode === "chineseToEnglish" ? (
               <>
-                <h2 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h2>
-                {renderPlayButton()}
+                <div className="mb-6 text-center">
+                  <h2 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h2>
+                  <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
+                </div>
+                
+                {showAnswer && (
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <p className="text-lg font-medium text-black">{currentCard.english}</p>
+                  </div>
+                )}
               </>
             ) : (
-              <h2 className="text-2xl font-bold mb-2 text-black">{currentCard.english}</h2>
+              <>
+                <div className="mb-6 text-center">
+                  <h2 className="text-2xl font-bold mb-2 text-black">{currentCard.english}</h2>
+                </div>
+                
+                {showAnswer && (
+                  <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+                    <h3 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h3>
+                    <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
-          
+        </div>
+      )}
+      
+      {/* Actions */}
+      {!isFinished && currentCard && (
+        <div>
           {!showAnswer ? (
             <PwaWrapper>
               <button
@@ -493,57 +360,51 @@ export default function ReviewPage() {
                 className="w-full bg-gradient-to-r from-fl-salmon to-fl-red text-white py-3 rounded-lg hover:from-fl-red hover:to-fl-salmon font-medium shadow-md transition-all duration-300 flex items-center justify-center"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M10 6v4l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
                 Show Answer
               </button>
             </PwaWrapper>
           ) : (
-            <div>
-              {reviewMode === "chineseToEnglish" ? (
-                <div className="mb-6">
-                  <p className="text-xl text-black mb-2">{currentCard.pinyin}</p>
-                  <p className="text-xl text-black">{currentCard.english}</p>
-                </div>
-              ) : (
-                <div className="mb-6">
-                  <h3 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h3>
-                  <p className="text-xl text-black mb-2">{currentCard.pinyin}</p>
-                  {renderPlayButton()}
-                </div>
-              )}
-              
-              <div className="flex space-x-4">
-                <PwaWrapper>
-                  <button
-                    onClick={() => handleResult(false)}
-                    className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-lg hover:from-red-600 hover:to-red-700 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                    </svg>
-                    Again
-                  </button>
-                </PwaWrapper>
-                <PwaWrapper>
-                  <button
-                    onClick={() => handleResult(true)}
-                    className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-lg hover:from-green-600 hover:to-green-700 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Got It
-                  </button>
-                </PwaWrapper>
-              </div>
+            <div className="flex space-x-3">
+              <PwaWrapper>
+                <button
+                  onClick={() => handleResult(false)}
+                  className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-4 rounded-lg hover:from-red-600 hover:to-red-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                  </svg>
+                  Again
+                </button>
+              </PwaWrapper>
+              <PwaWrapper>
+                <button
+                  onClick={() => handleResult(true)}
+                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-4 rounded-lg hover:from-green-600 hover:to-green-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Got It
+                </button>
+              </PwaWrapper>
             </div>
           )}
         </div>
       )}
       
-      {renderPwaMessage()}
+      {/* Swipe instructions */}
+      {!isFinished && currentCard && (
+        <div className="mt-6 text-center text-sm text-gray-500">
+          <p>Swipe up to show answer</p>
+          {showAnswer && (
+            <p className="mt-1">Swipe left for "Again", right for "Got It"</p>
+          )}
+        </div>
+      )}
+      
       {renderCategoryFilterModal()}
     </div>
   );
