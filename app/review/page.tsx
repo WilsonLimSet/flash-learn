@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getFlashcardsForReview, updateFlashcardReviewLevel, updateReviewStatus, getFlashcards, getCategories, getFlashcardsByCategory } from "@/utils/localStorage";
+import { getFlashcardsForReview, updateFlashcardReviewLevel, updateReviewStatus, getFlashcards, getCategories, getFlashcardsByCategory, getFlashcard } from "@/utils/localStorage";
 import Link from "next/link";
 import { Flashcard, Category } from "@/types";
 import { isRunningAsPwa, getPwaInstallMessage } from "@/utils/pwaUtils";
@@ -32,21 +32,52 @@ export default function ReviewPage() {
     
     // Load initial cards for review (all categories)
     loadCardsForReview();
-  }, []);
+    
+    // Set up a refresh interval to check for new cards
+    const refreshInterval = setInterval(() => {
+      // Check if there are any new cards to review
+      const today = new Date().toISOString().split('T')[0];
+      let cardsToReview = getFlashcardsForReview(today);
+      
+      // Apply category filter if needed
+      if (selectedCategory === null) {
+        // No category
+        cardsToReview = cardsToReview.filter(card => !card.categoryId);
+      } else if (selectedCategory !== undefined) {
+        // Specific category
+        cardsToReview = cardsToReview.filter(card => card.categoryId === selectedCategory);
+      }
+      
+      // If we're showing "all done" but there are cards to review, refresh
+      if (isFinished && cardsToReview.length > 0) {
+        console.log(`Found ${cardsToReview.length} new cards to review, refreshing...`);
+        loadCardsForReview();
+      }
+    }, 2000); // Check every 2 seconds
+    
+    return () => clearInterval(refreshInterval);
+  }, [isFinished, selectedCategory]); // Re-run when isFinished or selectedCategory changes
   
   // Effect to handle changes to the cards array
   useEffect(() => {
+    // Only run this effect if we're not in the middle of adding a card back to the queue
     // If we have cards but currentCardIndex is beyond the array length,
     // reset it to the last card in the array
     if (cards.length > 0 && currentCardIndex >= cards.length) {
-      setCurrentCardIndex(cards.length - 1);
+      console.log(`Current index (${currentCardIndex}) is beyond cards length (${cards.length}), adjusting...`);
+      // We don't need to adjust the index here anymore since we handle it in the handleResult function
     }
     
     // If we have no cards, mark as finished
     if (cards.length === 0) {
+      console.log("No cards to review, marking as finished");
       setIsFinished(true);
+    } else if (isFinished) {
+      // If we have cards but isFinished is true, set it to false
+      console.log("Cards available but marked as finished, correcting...");
+      setIsFinished(false);
     }
-  }, [cards, currentCardIndex]);
+  }, [cards.length, isFinished]); // Depend on cards.length and isFinished
   
   // Check if running as PWA on mount
   useEffect(() => {
@@ -61,6 +92,7 @@ export default function ReviewPage() {
     const today = new Date().toISOString().split('T')[0];
     console.log("Loading cards for review date:", today);
     
+    // Always get fresh data from localStorage
     if (selectedCategory === undefined) {
       // All categories
       cardsToReview = getFlashcardsForReview(today);
@@ -80,10 +112,11 @@ export default function ReviewPage() {
     // Shuffle the cards
     const shuffled = [...cardsToReview].sort(() => Math.random() - 0.5);
     
+    // Reset all state
     setCards(shuffled);
     setCurrentCardIndex(0);
     setShowAnswer(false);
-    setIsFinished(false);
+    setIsFinished(shuffled.length === 0); // Only set finished if there are no cards
     setReviewedCards(new Set());
   };
   
@@ -92,6 +125,18 @@ export default function ReviewPage() {
     ? cards[currentCardIndex] 
     : null;
   
+  // Debug log for card state
+  useEffect(() => {
+    if (cards.length > 0) {
+      console.log(`Cards state updated: ${cards.length} cards, current index: ${currentCardIndex}`);
+      if (currentCard) {
+        console.log(`Current card: ${currentCard.chinese}, Level: ${currentCard.reviewLevel}`);
+      } else {
+        console.log(`No current card at index ${currentCardIndex}`);
+      }
+    }
+  }, [cards, currentCardIndex, currentCard]);
+  
   const handleShowAnswer = () => {
     setShowAnswer(true);
   };
@@ -99,46 +144,65 @@ export default function ReviewPage() {
   const handleResult = (successful: boolean) => {
     if (!currentCard) return;
     
-    // Update review status
+    // Update review status and level in localStorage
     updateReviewStatus(currentCard.id, successful);
-    
-    // Update review level
     updateFlashcardReviewLevel(currentCard.id, successful);
     
-    // Add to reviewed cards
+    // Add to reviewed cards set
     setReviewedCards(prev => new Set(prev).add(currentCard.id));
     
     if (!successful) {
-      // If marked as "Again", add the card back to the end of the queue
-      const cardToReview = { ...currentCard };
+      // If marked as "Again", we need to:
+      // 1. Get the updated card from localStorage (with reviewLevel=0)
+      // 2. Add it back to the end of the queue
+      const updatedCard = getFlashcard(currentCard.id);
       
-      // Update the card's review level to 0 in our local state as well
-      cardToReview.reviewLevel = 0;
-      cardToReview.nextReviewDate = new Date().toISOString().split('T')[0];
-      
-      // Add to the end of the queue
-      setCards(prevCards => [...prevCards, cardToReview]);
-      console.log(`Card "${cardToReview.chinese}" marked as "Again" - added back to queue`);
-    }
-    
-    // Move to next card
-    if (currentCardIndex < cards.length - 1) {
-      console.log(`Moving to next card, ${cards.length - currentCardIndex - 1} cards remaining`);
-      setCurrentCardIndex(prev => prev + 1);
-      setShowAnswer(false);
-    } else {
-      // We've reached the end of the current queue
-      // But we need to check if we've added any "Again" cards that we need to review
-      const remainingCards = cards.slice(currentCardIndex + 1);
-      if (remainingCards.length > 0) {
-        console.log(`${remainingCards.length} cards remaining in the queue`);
-        setCurrentCardIndex(prev => prev + 1);
-        setShowAnswer(false);
+      if (updatedCard) {
+        console.log(`Card "${updatedCard.chinese}" marked as "Again" - adding back to queue with level ${updatedCard.reviewLevel}`);
+        
+        // Update our cards array with the modified card at the end
+        setCards(prevCards => {
+          // First, find the current index of the card
+          const currentIndex = prevCards.findIndex(card => card.id === currentCard.id);
+          
+          // Create a new array without the current card
+          const newCards = prevCards.filter((_, index) => index !== currentIndex);
+          
+          // Add the updated card to the end
+          const updatedCards = [...newCards, updatedCard];
+          
+          console.log(`Cards queue updated: ${updatedCards.length} cards total`);
+          
+          return updatedCards;
+        });
+        
+        // If we're at the last card, we need to adjust the index
+        if (currentCardIndex >= cards.length - 1) {
+          // We're at the end, so we need to adjust to show the next card
+          // which will be the last card in the array after our update
+          setCurrentCardIndex(cards.length - 2);
+        }
       } else {
-        console.log("Review session finished");
+        console.error(`Could not find card ${currentCard.id} in localStorage`);
+        // Just move to the next card
+        if (currentCardIndex < cards.length - 1) {
+          setCurrentCardIndex(prev => prev + 1);
+        } else {
+          setIsFinished(true);
+        }
+      }
+    } else {
+      // For successful reviews, just move to the next card
+      if (currentCardIndex < cards.length - 1) {
+        setCurrentCardIndex(prev => prev + 1);
+      } else {
+        // We've reached the end of the queue
         setIsFinished(true);
       }
     }
+    
+    // Always reset showAnswer for the next card
+    setShowAnswer(false);
   };
 
   const toggleReviewMode = () => {
@@ -291,7 +355,10 @@ export default function ReviewPage() {
           </div>
           <div className="text-center p-2 bg-fl-yellow/10 rounded-lg flex-1 ml-2">
             <p className="text-xs sm:text-sm text-black font-medium mb-1">To Review</p>
-            <p className="text-xl sm:text-2xl font-bold text-fl-yellow-DEFAULT">{cards.length}</p>
+            <p className="text-xl sm:text-2xl font-bold text-fl-yellow-DEFAULT">
+              {/* Show remaining cards count (total - current index) */}
+              {Math.max(0, cards.length - currentCardIndex)}
+            </p>
           </div>
         </div>
       </div>
