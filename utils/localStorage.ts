@@ -135,7 +135,13 @@ export function updateFlashcardReviewLevel(id: string, successful: boolean): voi
   // Update the review level
   if (successful) {
     // If successful, move up one level (max level is 5)
-    card.reviewLevel = Math.min(card.reviewLevel + 1, 5);
+    // If the card is at level 0, set it to level 1
+    // Otherwise, increment by 1 up to max level 5
+    if (card.reviewLevel === 0) {
+      card.reviewLevel = 1;
+    } else {
+      card.reviewLevel = Math.min(card.reviewLevel + 1, 5);
+    }
   } else {
     // If unsuccessful, reset to level 0 but keep in review queue
     card.reviewLevel = 0;
