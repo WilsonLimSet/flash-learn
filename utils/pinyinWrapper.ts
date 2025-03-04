@@ -1,8 +1,8 @@
 // Create a wrapper for the library
-// const chineseToPinyin = require('chinese-to-pinyin');
+const chineseToPinyin = require('chinese-to-pinyin');
 
-// Simple mapping for common characters
-const pinyinMap: Record<string, string> = {
+// Simple mapping for fallback only when the library fails
+const fallbackPinyinMap: Record<string, string> = {
   "你": "nǐ",
   "好": "hǎo",
   "谢": "xiè",
@@ -15,8 +15,19 @@ const pinyinMap: Record<string, string> = {
   "语": "yǔ",
   "言": "yán",
   "汉": "hàn",
-  "英": "yīng",
-  // Add more common characters as needed
+  "英": "yīng"
+};
+
+// Common phrases with their pinyin for fallback
+const commonPhrases: Record<string, string> = {
+  "你好": "nǐ hǎo",
+  "谢谢": "xiè xiè",
+  "再见": "zài jiàn",
+  "中国": "zhōng guó",
+  "学习": "xué xí",
+  "语言": "yǔ yán",
+  "汉语": "hàn yǔ",
+  "英语": "yīng yǔ"
 };
 
 export function convertChineseToPinyin(text: string, options?: {
@@ -25,22 +36,35 @@ export function convertChineseToPinyin(text: string, options?: {
   useV?: boolean;
   spaces?: boolean;
 }): string {
-  // Try to use the window.pinyinFn if available (loaded from CDN)
-  if (typeof window !== 'undefined' && (window as any).pinyinFn) {
-    return (window as any).pinyinFn(text);
-  }
+  console.log("Converting to pinyin:", text);
   
-  // Fallback to character-by-character conversion using our map
-  let result = '';
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (pinyinMap[char]) {
-      result += pinyinMap[char] + ' ';
-    } else {
-      // If we don't have a mapping, just use the character
-      result += char + ' ';
+  try {
+    // First check if we have a direct mapping for common phrases
+    if (commonPhrases[text]) {
+      console.log("Found common phrase match:", commonPhrases[text]);
+      return commonPhrases[text];
     }
+    
+    // Use the pinyin library
+    const result = chineseToPinyin(text, options);
+    console.log("Used pinyin library:", result);
+    return result;
+  } catch (error) {
+    console.error("Error using pinyin library:", error);
+    
+    // Fallback to character-by-character conversion using our map
+    let result = '';
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (fallbackPinyinMap[char]) {
+        result += fallbackPinyinMap[char] + ' ';
+      } else {
+        // If we don't have a mapping, just use the character
+        result += char + ' ';
+      }
+    }
+    
+    console.log("Fallback pinyin conversion:", result.trim());
+    return result.trim();
   }
-  
-  return result.trim();
 } 

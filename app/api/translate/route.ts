@@ -9,7 +9,6 @@ function md5(text: string): string {
 }
 
 // Replace 'any' with a more specific type
-// For example:
 interface TranslationResponse {
   from: string;
   to: string;
