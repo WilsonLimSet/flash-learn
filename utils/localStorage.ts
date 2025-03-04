@@ -137,31 +137,34 @@ export function updateFlashcardReviewLevel(id: string, successful: boolean): voi
     // If successful, move up one level (max level is 5)
     card.reviewLevel = Math.min(card.reviewLevel + 1, 5);
   } else {
-    // If unsuccessful, decrease by 1 level (min level is 0)
-    card.reviewLevel = Math.max(card.reviewLevel - 1, 0);
+    // If unsuccessful, reset to level 0 but keep in review queue
+    card.reviewLevel = 0;
   }
   
   // Calculate the next review date based on the new level
   const today = new Date();
   const nextReview = new Date(today);
   
-  // Set the next review date based on the new level using a more consistent progression
+  // Set the next review date based on the new level using the requested progression
   let daysToAdd = 0;
   switch(card.reviewLevel) {
     case 0: daysToAdd = 0; break;    // today (review again in the same session)
-    case 1: daysToAdd = 1; break;    // tomorrow
+    case 1: daysToAdd = 1; break;    // in 1 day
     case 2: daysToAdd = 3; break;    // in 3 days
-    case 3: daysToAdd = 7; break;    // in 1 week
-    case 4: daysToAdd = 14; break;   // in 2 weeks
-    case 5: daysToAdd = 30; break;   // in 1 month
+    case 3: daysToAdd = 5; break;    // in 5 days
+    case 4: daysToAdd = 10; break;   // in 10 days
+    case 5: daysToAdd = 24; break;   // in 24 days
     default: daysToAdd = 1; // fallback to 1 day
   }
   
   nextReview.setDate(today.getDate() + daysToAdd);
-  card.nextReviewDate = nextReview.toISOString();
   
-  // Save the updated flashcards
-  localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(flashcards));
+  // Format the date as YYYY-MM-DD
+  card.nextReviewDate = nextReview.toISOString().split('T')[0];
+  
+  // Update the flashcard in storage
+  flashcards[cardIndex] = card;
+  localStorage.setItem('flashcards', JSON.stringify(flashcards));
 }
 
 // Category Management Functions

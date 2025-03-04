@@ -43,16 +43,25 @@ export default function ReviewPage() {
   const loadCardsForReview = () => {
     let cardsToReview: Flashcard[] = [];
     
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+    console.log("Loading cards for review date:", today);
+    
     if (selectedCategory === undefined) {
       // All categories
-      cardsToReview = getFlashcardsForReview();
+      cardsToReview = getFlashcardsForReview(today);
     } else if (selectedCategory === null) {
       // No category
-      cardsToReview = getFlashcardsForReview().filter(card => !card.categoryId);
+      cardsToReview = getFlashcardsForReview(today).filter(card => !card.categoryId);
     } else {
       // Specific category
-      cardsToReview = getFlashcardsForReview().filter(card => card.categoryId === selectedCategory);
+      cardsToReview = getFlashcardsForReview(today).filter(card => card.categoryId === selectedCategory);
     }
+    
+    console.log(`Found ${cardsToReview.length} cards for review`);
+    cardsToReview.forEach(card => {
+      console.log(`Card: ${card.chinese}, Level: ${card.reviewLevel}, Next review: ${card.nextReviewDate}`);
+    });
     
     // Shuffle the cards
     const shuffled = [...cardsToReview].sort(() => Math.random() - 0.5);
@@ -60,7 +69,7 @@ export default function ReviewPage() {
     setCards(shuffled);
     setCurrentCardIndex(0);
     setShowAnswer(false);
-    setIsFinished(shuffled.length === 0);
+    setIsFinished(false);
     setReviewedCards(new Set());
   };
   
@@ -85,12 +94,27 @@ export default function ReviewPage() {
     // Add to reviewed cards
     setReviewedCards(prev => new Set(prev).add(currentCard.id));
     
+    if (!successful) {
+      // If marked as "Again", add the card back to the end of the queue
+      const cardToReview = { ...currentCard };
+      setCards(prevCards => [...prevCards, cardToReview]);
+    }
+    
     // Move to next card
     if (currentCardIndex < cards.length - 1) {
       setCurrentCardIndex(prev => prev + 1);
       setShowAnswer(false);
     } else {
-      setIsFinished(true);
+      // Check if there are any cards that were marked as "Again" and are still in the queue
+      const remainingCards = cards.slice(currentCardIndex + 1);
+      if (remainingCards.length > 0) {
+        console.log(`${remainingCards.length} cards remaining in the queue`);
+        setCurrentCardIndex(prev => prev + 1);
+        setShowAnswer(false);
+      } else {
+        console.log("Review session finished");
+        setIsFinished(true);
+      }
     }
   };
 
@@ -336,11 +360,12 @@ export default function ReviewPage() {
             <PwaWrapper>
               <button
                 onClick={handleShowAnswer}
-                className="w-full max-w-xs bg-gradient-to-r from-fl-salmon to-fl-red text-white py-3 rounded-lg hover:from-fl-red hover:to-fl-salmon font-medium shadow-md transition-all duration-300 flex items-center justify-center"
+                className="w-full max-w-xs bg-gradient-to-r from-fl-salmon to-fl-red text-white py-3 px-6 rounded-lg hover:from-fl-red hover:to-fl-salmon font-medium shadow-md transition-all duration-300 flex items-center justify-center"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M10 6v4l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
                 </svg>
                 Show Answer
               </button>
