@@ -56,16 +56,30 @@ export function getFlashcardsForReview(dateString: string = new Date().toISOStri
   const today = new Date(dateString);
   today.setHours(0, 0, 0, 0); // Set to beginning of day
   
-  return cards.filter(card => {
+  console.log(`Getting flashcards for review on ${dateString}`);
+  
+  const cardsForReview = cards.filter(card => {
     // Level 0 cards should always be included
-    if (card.reviewLevel === 0) return true;
+    if (card.reviewLevel === 0) {
+      console.log(`Including level 0 card: ${card.chinese}`);
+      return true;
+    }
     
     // For other cards, compare dates properly
     const reviewDate = new Date(card.nextReviewDate);
     reviewDate.setHours(0, 0, 0, 0); // Set to beginning of day
     
-    return reviewDate <= today;
+    const shouldInclude = reviewDate <= today;
+    if (shouldInclude) {
+      console.log(`Including card: ${card.chinese}, level: ${card.reviewLevel}, next review: ${card.nextReviewDate}`);
+    }
+    
+    return shouldInclude;
   });
+  
+  console.log(`Found ${cardsForReview.length} cards for review`);
+  
+  return cardsForReview;
 }
 
 export function updateReviewStatus(id: string, successful: boolean): void {
@@ -168,9 +182,12 @@ export function updateFlashcardReviewLevel(id: string, successful: boolean): voi
   // Format the date as YYYY-MM-DD
   card.nextReviewDate = nextReview.toISOString().split('T')[0];
   
+  // For debugging
+  console.log(`Updated card ${card.chinese} to level ${card.reviewLevel}, next review on ${card.nextReviewDate}`);
+  
   // Update the flashcard in storage
   flashcards[cardIndex] = card;
-  localStorage.setItem('flashcards', JSON.stringify(flashcards));
+  localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(flashcards));
 }
 
 // Category Management Functions

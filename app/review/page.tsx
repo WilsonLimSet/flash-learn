@@ -60,14 +60,6 @@ export default function ReviewPage() {
   
   // Effect to handle changes to the cards array
   useEffect(() => {
-    // Only run this effect if we're not in the middle of adding a card back to the queue
-    // If we have cards but currentCardIndex is beyond the array length,
-    // reset it to the last card in the array
-    if (cards.length > 0 && currentCardIndex >= cards.length) {
-      console.log(`Current index (${currentCardIndex}) is beyond cards length (${cards.length}), adjusting...`);
-      // We don't need to adjust the index here anymore since we handle it in the handleResult function
-    }
-    
     // If we have no cards, mark as finished
     if (cards.length === 0) {
       console.log("No cards to review, marking as finished");
@@ -77,7 +69,14 @@ export default function ReviewPage() {
       console.log("Cards available but marked as finished, correcting...");
       setIsFinished(false);
     }
-  }, [cards.length, isFinished]); // Depend on cards.length and isFinished
+    
+    // If we've removed a card and the currentCardIndex is now out of bounds,
+    // adjust it to the last card in the array
+    if (currentCardIndex >= cards.length && cards.length > 0) {
+      console.log(`Current index (${currentCardIndex}) is beyond cards length (${cards.length}), adjusting...`);
+      setCurrentCardIndex(cards.length - 1);
+    }
+  }, [cards.length, currentCardIndex, isFinished]); // Depend on cards.length, currentCardIndex, and isFinished
   
   // Check if running as PWA on mount
   useEffect(() => {
@@ -192,13 +191,20 @@ export default function ReviewPage() {
         }
       }
     } else {
-      // For successful reviews, just move to the next card
-      if (currentCardIndex < cards.length - 1) {
-        setCurrentCardIndex(prev => prev + 1);
-      } else {
-        // We've reached the end of the queue
-        setIsFinished(true);
-      }
+      // For successful reviews, remove the card from the queue and move to the next card
+      setCards(prevCards => {
+        // Remove the current card from the array
+        const updatedCards = prevCards.filter((_, index) => index !== currentCardIndex);
+        console.log(`Card removed from queue. Remaining cards: ${updatedCards.length}`);
+        
+        // Check if we've reached the end of the queue
+        if (currentCardIndex >= updatedCards.length) {
+          // We've removed the last card, so set isFinished
+          setIsFinished(true);
+        }
+        
+        return updatedCards;
+      });
     }
     
     // Always reset showAnswer for the next card
