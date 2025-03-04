@@ -34,6 +34,20 @@ export default function ReviewPage() {
     loadCardsForReview();
   }, []);
   
+  // Effect to handle changes to the cards array
+  useEffect(() => {
+    // If we have cards but currentCardIndex is beyond the array length,
+    // reset it to the last card in the array
+    if (cards.length > 0 && currentCardIndex >= cards.length) {
+      setCurrentCardIndex(cards.length - 1);
+    }
+    
+    // If we have no cards, mark as finished
+    if (cards.length === 0) {
+      setIsFinished(true);
+    }
+  }, [cards, currentCardIndex]);
+  
   // Check if running as PWA on mount
   useEffect(() => {
     setIsPwa(isRunningAsPwa());
@@ -97,15 +111,24 @@ export default function ReviewPage() {
     if (!successful) {
       // If marked as "Again", add the card back to the end of the queue
       const cardToReview = { ...currentCard };
+      
+      // Update the card's review level to 0 in our local state as well
+      cardToReview.reviewLevel = 0;
+      cardToReview.nextReviewDate = new Date().toISOString().split('T')[0];
+      
+      // Add to the end of the queue
       setCards(prevCards => [...prevCards, cardToReview]);
+      console.log(`Card "${cardToReview.chinese}" marked as "Again" - added back to queue`);
     }
     
     // Move to next card
     if (currentCardIndex < cards.length - 1) {
+      console.log(`Moving to next card, ${cards.length - currentCardIndex - 1} cards remaining`);
       setCurrentCardIndex(prev => prev + 1);
       setShowAnswer(false);
     } else {
-      // Check if there are any cards that were marked as "Again" and are still in the queue
+      // We've reached the end of the current queue
+      // But we need to check if we've added any "Again" cards that we need to review
       const remainingCards = cards.slice(currentCardIndex + 1);
       if (remainingCards.length > 0) {
         console.log(`${remainingCards.length} cards remaining in the queue`);
