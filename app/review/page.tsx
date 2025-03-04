@@ -144,8 +144,8 @@ export default function ReviewPage() {
   const handleResult = (successful: boolean) => {
     if (!currentCard) return;
     
-    // Update review status and level in localStorage
-    updateReviewStatus(currentCard.id, successful);
+    // Update review level in localStorage
+    // Only call one function to update the review level
     updateFlashcardReviewLevel(currentCard.id, successful);
     
     // Add to reviewed cards set
