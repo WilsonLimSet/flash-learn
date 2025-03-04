@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import { addFlashcard, getCategories } from "@/utils/localStorage";
 import { v4 as uuidv4 } from "uuid";
 import { Category } from "@/types";
-import { isRunningAsPwa } from "@/utils/pwaUtils";
-import PwaWrapper from "@/app/components/PwaWrapper";
 import { translateFromChinese } from "@/utils/translation";
 
 export default function CreatePage() {
@@ -18,12 +16,10 @@ export default function CreatePage() {
   const [translation, setTranslation] = useState<{ chinese: string; pinyin: string; english: string } | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
-  const [isPwa, setIsPwa] = useState(false);
   
   // Load categories on mount
   useEffect(() => {
     setCategories(getCategories());
-    setIsPwa(isRunningAsPwa());
   }, []);
   
   // Reset success message after 3 seconds
@@ -63,8 +59,10 @@ export default function CreatePage() {
     setIsLoading(true);
     
     try {
+      console.log("Translating:", chinese);
       // Use the translateFromChinese utility function
       const result = await translateFromChinese(chinese);
+      console.log("Translation result:", result);
       
       // Set translation result
       setTranslation(result);
@@ -74,6 +72,7 @@ export default function CreatePage() {
       setEnglish(result.english);
       
     } catch (err) {
+      console.error("Translation error:", err);
       setError(err instanceof Error ? err.message : "Translation failed");
     } finally {
       setIsLoading(false);
@@ -90,32 +89,42 @@ export default function CreatePage() {
       return;
     }
     
-    // Create new flashcard
-    const newFlashcard = {
-      id: uuidv4(),
-      chinese,
-      pinyin,
-      english,
-      categoryId: selectedCategory,
-      reviewLevel: 0,
-      nextReviewDate: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    };
-    
-    // Add to storage
-    addFlashcard(newFlashcard);
-    
-    // Reset form
-    setChinese("");
-    setPinyin("");
-    setEnglish("");
-    setTranslation(null);
-    setSuccess(true);
+    try {
+      console.log("Creating flashcard with:", { chinese, pinyin, english, categoryId: selectedCategory });
+      
+      // Create new flashcard
+      const newFlashcard = {
+        id: uuidv4(),
+        chinese,
+        pinyin,
+        english,
+        categoryId: selectedCategory,
+        reviewLevel: 0,
+        nextReviewDate: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Add to storage
+      addFlashcard(newFlashcard);
+      console.log("Flashcard created successfully:", newFlashcard);
+      
+      // Reset form
+      setChinese("");
+      setPinyin("");
+      setEnglish("");
+      setTranslation(null);
+      setSuccess(true);
+    } catch (err) {
+      console.error("Error creating flashcard:", err);
+      setError("Failed to create flashcard. Please try again.");
+    }
   };
   
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <h1 className="text-2xl font-bold mb-6">Create Flashcard</h1>
+      
+      {/* Form should now be working properly without PwaWrapper */}
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -143,26 +152,24 @@ export default function CreatePage() {
               rows={2}
               placeholder="Enter Chinese text"
             />
-            <PwaWrapper>
-              <button
-                type="button"
-                onClick={handleTranslate}
-                disabled={isLoading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-fl-salmon hover:bg-fl-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fl-salmon"
-              >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Translating...
-                  </>
-                ) : (
-                  "Translate"
-                )}
-              </button>
-            </PwaWrapper>
+            <button
+              type="button"
+              onClick={handleTranslate}
+              disabled={isLoading}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-fl-salmon hover:bg-fl-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fl-salmon"
+            >
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Translating...
+                </>
+              ) : (
+                "Translate"
+              )}
+            </button>
           </div>
         </div>
         
@@ -214,14 +221,12 @@ export default function CreatePage() {
         </div>
         
         <div className="flex justify-end">
-          <PwaWrapper>
-            <button
-              type="submit"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-fl-salmon hover:bg-fl-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fl-salmon"
-            >
-              Create Flashcard
-            </button>
-          </PwaWrapper>
+          <button
+            type="submit"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-fl-salmon hover:bg-fl-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-fl-salmon"
+          >
+            Create Flashcard
+          </button>
         </div>
       </form>
     </div>

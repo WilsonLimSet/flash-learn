@@ -23,6 +23,24 @@ export default function PwaWrapper({
   const { isPwa, showInstallPrompt } = usePwa();
 
   const handleClick = (e: React.MouseEvent) => {
+    // Check if the target is an input, textarea, or select element
+    const target = e.target as HTMLElement;
+    const isFormElement = 
+      target.tagName === 'INPUT' || 
+      target.tagName === 'TEXTAREA' || 
+      target.tagName === 'SELECT' ||
+      target.closest('input') ||
+      target.closest('textarea') ||
+      target.closest('select');
+    
+    // Don't intercept clicks on form elements
+    if (isFormElement) {
+      if (onClick && !disabled) {
+        onClick(e);
+      }
+      return;
+    }
+    
     if (!isPwa) {
       // If not in PWA mode, show the install prompt
       showInstallPrompt();
