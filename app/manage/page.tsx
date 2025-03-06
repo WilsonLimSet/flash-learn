@@ -294,6 +294,49 @@ export default function ManagePage() {
   const renderPagination = () => {
     if (totalPages <= 1) return null;
     
+    // Logic to show limited page numbers with ellipses
+    const getPageNumbers = () => {
+      const maxPagesToShow = 5; // Show at most 5 page numbers at once
+      
+      if (totalPages <= maxPagesToShow) {
+        // If we have fewer pages than the max, show all pages
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+      }
+      
+      // Always include first page, last page, current page, and pages adjacent to current
+      const pageNumbers: (number | string)[] = [];
+      
+      // Always add page 1
+      pageNumbers.push(1);
+      
+      // Add ellipsis if needed
+      if (currentPage > 3) {
+        pageNumbers.push('...');
+      }
+      
+      // Add pages around current page
+      const startPage = Math.max(2, currentPage - 1);
+      const endPage = Math.min(totalPages - 1, currentPage + 1);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        if (i !== 1 && i !== totalPages) { // Avoid duplicates
+          pageNumbers.push(i);
+        }
+      }
+      
+      // Add ellipsis if needed
+      if (currentPage < totalPages - 2) {
+        pageNumbers.push('...');
+      }
+      
+      // Always add last page
+      if (totalPages > 1) {
+        pageNumbers.push(totalPages);
+      }
+      
+      return pageNumbers;
+    };
+    
     return (
       <div className="mt-10 mb-6">
         <nav className="flex justify-center">
@@ -309,18 +352,24 @@ export default function ManagePage() {
               </li>
             )}
             
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(number => (
-              <li key={number}>
-                <PwaWrapper
-                  onClick={() => paginate(number)}
-                  className={`px-3 py-1 rounded-md ${
-                    currentPage === number
-                      ? 'bg-fl-red text-white'
-                      : 'bg-gray-200 hover:bg-gray-300'
-                  }`}
-                >
-                  {number}
-                </PwaWrapper>
+            {getPageNumbers().map((number, index) => (
+              <li key={index}>
+                {typeof number === 'number' ? (
+                  <PwaWrapper
+                    onClick={() => paginate(number)}
+                    className={`px-3 py-1 rounded-md ${
+                      currentPage === number
+                        ? 'bg-fl-red text-white'
+                        : 'bg-gray-200 hover:bg-gray-300'
+                    }`}
+                  >
+                    {number}
+                  </PwaWrapper>
+                ) : (
+                  <span className="px-2 py-1">
+                    {number}
+                  </span>
+                )}
               </li>
             ))}
             
@@ -512,58 +561,81 @@ export default function ManagePage() {
       const data = JSON.parse(text);
       
       // Validate the data structure
-      if (!data.flashcards || !Array.isArray(data.flashcards) || 
-          !data.categories || !Array.isArray(data.categories)) {
+      if (!data.flashcards || !Array.isArray(data.flashcards)) {
         setImportError('Invalid file format. The file does not contain valid flashcards data.');
         return;
       }
       
+      // Check for categories array (optional in some exports)
+      const hasCategories = data.categories && Array.isArray(data.categories);
+      
       // Confirm with the user
-      if (window.confirm(`This will import ${data.flashcards.length} flashcards and ${data.categories.length} categories. Your existing data will be merged with the imported data. Continue?`)) {
-        // Process categories first
-        data.categories.forEach((category: Category) => {
-          // Check if category already exists
-          const existingCategories = getCategories();
-          const exists = existingCategories.some(c => c.id === category.id);
-          
-          if (!exists) {
-            // Add new category
-            const newCategory: Category = {
-              id: category.id,
-              name: category.name,
-              color: category.color,
-              createdAt: category.createdAt || new Date().toISOString()
-            };
-            addCategory(newCategory);
-          } else {
-            // Update existing category
-            updateCategory({
-              id: category.id,
-              name: category.name,
-              color: category.color,
-              createdAt: category.createdAt || new Date().toISOString()
-            });
-          }
-        });
+      const message = `This will import ${data.flashcards.length} flashcards${
+        hasCategories ? ` and ${data.categories.length} categories` : ''
+      }. Your existing data will be merged with the imported data. Continue?`;
+      
+      if (window.confirm(message)) {
+        // Process categories first if they exist
+        if (hasCategories) {
+          data.categories.forEach((category: Category) => {
+            // Validate category structure
+            if (!category.id || !category.name || !category.color) {
+              console.warn('Skipping invalid category:', category);
+              return;
+            }
+            
+            // Check if category already exists
+            const existingCategories = getCategories();
+            const exists = existingCategories.some(c => c.id === category.id);
+            
+            if (!exists) {
+              // Add new category
+              const newCategory: Category = {
+                id: category.id,
+                name: category.name,
+                color: category.color,
+                createdAt: category.createdAt || new Date().toISOString()
+              };
+              addCategory(newCategory);
+            } else {
+              // Update existing category
+              updateCategory({
+                id: category.id,
+                name: category.name,
+                color: category.color,
+                createdAt: category.createdAt || new Date().toISOString()
+              });
+            }
+          });
+        }
         
         // Process flashcards
-        data.flashcards.forEach((flashcard: Flashcard) => {
+        let importedCount = 0;
+        let skippedCount = 0;
+        
+        data.flashcards.forEach((flashcard: any) => {
+          // Validate flashcard structure
+          if (!flashcard.id || !flashcard.chinese || !flashcard.pinyin || !flashcard.english) {
+            console.warn('Skipping invalid flashcard:', flashcard);
+            skippedCount++;
+            return;
+          }
+          
           // Check if flashcard already exists
           const existingFlashcards = getFlashcards();
           const existingIndex = existingFlashcards.findIndex(f => f.id === flashcard.id);
           
           if (existingIndex === -1) {
             // Add new flashcard (using localStorage utility)
-            const { chinese, pinyin, english, categoryId, reviewLevel, nextReviewDate, createdAt } = flashcard;
             const newCard: Flashcard = {
               id: flashcard.id,
-              chinese,
-              pinyin,
-              english,
-              categoryId,
-              reviewLevel: reviewLevel || 0,
-              nextReviewDate: nextReviewDate || new Date().toISOString(),
-              createdAt: createdAt || new Date().toISOString()
+              chinese: flashcard.chinese,
+              pinyin: flashcard.pinyin,
+              english: flashcard.english,
+              categoryId: flashcard.categoryId,
+              reviewLevel: typeof flashcard.reviewLevel === 'number' ? flashcard.reviewLevel : 0,
+              nextReviewDate: flashcard.nextReviewDate || new Date().toISOString().split('T')[0],
+              createdAt: flashcard.createdAt || new Date().toISOString()
             };
             
             // We need to manually add it to localStorage since our utility functions
@@ -571,6 +643,10 @@ export default function ManagePage() {
             const allFlashcards = getFlashcards();
             allFlashcards.push(newCard);
             localStorage.setItem('flashcards', JSON.stringify(allFlashcards));
+            importedCount++;
+          } else {
+            // Skip existing flashcards
+            skippedCount++;
           }
         });
         
@@ -579,8 +655,9 @@ export default function ManagePage() {
         setCategories(getCategories());
         setCardsForReview(getFlashcardsForReview().length);
         
-        // Show success message
+        // Show success message with counts
         setImportSuccess(true);
+        setImportError(`Successfully imported ${importedCount} flashcards. ${skippedCount > 0 ? `${skippedCount} duplicates were skipped.` : ''}`);
         
         // Reset file input
         setImportFile(null);
@@ -589,7 +666,8 @@ export default function ManagePage() {
         setTimeout(() => {
           setShowImportModal(false);
           setImportSuccess(false);
-        }, 2000);
+          setImportError(null);
+        }, 3000);
       }
     } catch (error) {
       console.error('Error importing data:', error);
@@ -788,7 +866,18 @@ export default function ManagePage() {
             Export Data
           </button>
         </PwaWrapper>
-     
+        
+        <PwaWrapper>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex-1 py-3 px-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 shadow-md transition-all duration-300 flex items-center justify-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm7.707-10.293a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V17a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414l-3-3z" clipRule="evenodd" />
+            </svg>
+            Import Data
+          </button>
+        </PwaWrapper>
       </div>
       
       {/* Category Management */}

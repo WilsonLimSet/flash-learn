@@ -17,12 +17,25 @@ export function getFlashcards(): Flashcard[] {
   }
 }
 
-export function addFlashcard(card: Flashcard): void {
-  if (typeof window === "undefined") return;
+export function addFlashcard(card: Flashcard): boolean {
+  if (typeof window === "undefined") return false;
   
   const cards = getFlashcards();
+  
+  // Check if a flashcard with the same Chinese term already exists
+  const duplicateExists = cards.some(existingCard => 
+    existingCard.chinese.trim().toLowerCase() === card.chinese.trim().toLowerCase()
+  );
+  
+  // If duplicate exists, return false to indicate failure
+  if (duplicateExists) {
+    return false;
+  }
+  
+  // Otherwise, add the card and return true to indicate success
   cards.push(card);
   localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(cards));
+  return true;
 }
 
 export function updateFlashcard(updatedCard: Flashcard): void {

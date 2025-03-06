@@ -104,8 +104,15 @@ export default function CreatePage() {
         createdAt: new Date().toISOString(),
       };
       
-      // Add to storage
-      addFlashcard(newFlashcard);
+      // Add to storage and check for duplicates
+      const success = addFlashcard(newFlashcard);
+      
+      if (!success) {
+        // Duplicate detected
+        setError(`A flashcard with the Chinese term "${chinese}" already exists.`);
+        return;
+      }
+      
       console.log("Flashcard created successfully:", newFlashcard);
       
       // Reset form
@@ -114,6 +121,7 @@ export default function CreatePage() {
       setEnglish("");
       setTranslation(null);
       setSuccess(true);
+      setError(null); // Clear any previous errors
     } catch (err) {
       console.error("Error creating flashcard:", err);
       setError("Failed to create flashcard. Please try again.");
