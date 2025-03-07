@@ -35,7 +35,7 @@ export default function ManagePage() {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const cardsPerPage = 5; // Show 5 cards per page instead of 10
+  const cardsPerPage = 10; // Show 10 cards per page
 
   // Category state
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1153,6 +1153,7 @@ export default function ManagePage() {
       {renderCategoryModal()}
       {renderCategoryManageModal()}
       {renderExportModal()}
+      {renderImportModal()}
     </div>
   );
 } 
