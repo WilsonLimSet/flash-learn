@@ -13,6 +13,7 @@ export default function ReviewPage() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [reviewMode, setReviewMode] = useState<"chineseToEnglish" | "englishToChinese">("chineseToEnglish");
+  const [displayMode, setDisplayMode] = useState<"normal" | "chineseOnly">("normal");
   const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set());
   const [totalCards, setTotalCards] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -217,6 +218,12 @@ export default function ReviewPage() {
     );
   };
 
+  const toggleDisplayMode = () => {
+    setDisplayMode(prev => 
+      prev === "normal" ? "chineseOnly" : "normal"
+    );
+  };
+  
   // Get category for current card
   const getCurrentCardCategory = () => {
     if (!currentCard || !currentCard.categoryId) return null;
@@ -288,14 +295,12 @@ export default function ReviewPage() {
           </div>
           
           <div className="flex justify-end">
-            <PwaWrapper>
-              <button
-                onClick={() => setShowCategoryFilter(false)}
-                className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
-              >
-                Close
-              </button>
-            </PwaWrapper>
+            <button
+              onClick={() => setShowCategoryFilter(false)}
+              className="px-4 py-2 bg-gray-200 text-black rounded-md hover:bg-gray-300"
+            >
+              Close
+            </button>
           </div>
         </div>
       </div>
@@ -305,46 +310,61 @@ export default function ReviewPage() {
   // Render the review mode toggle button
   const renderReviewModeToggle = () => {
     return (
-      <PwaWrapper>
-        <button
-          onClick={toggleReviewMode}
-          className="flex items-center justify-center px-3 py-2 bg-white border border-gray-300 rounded-md text-black text-sm hover:bg-gray-100"
-        >
-          {reviewMode === "chineseToEnglish" ? (
-            <>
-              <span className="mr-1">中文</span>
-              <span className="text-gray-400 mx-1">→</span>
-              <span className="ml-1">English</span>
-            </>
-          ) : (
-            <>
-              <span className="mr-1">English</span>
-              <span className="text-gray-400 mx-1">→</span>
-              <span className="ml-1">中文</span>
-            </>
-          )}
-        </button>
-      </PwaWrapper>
+      <button
+        onClick={toggleReviewMode}
+        className="flex items-center justify-center p-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+        title={reviewMode === "chineseToEnglish" ? "Currently: Chinese → English" : "Currently: English → Chinese"}
+      >
+        {reviewMode === "chineseToEnglish" ? (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        )}
+      </button>
+    );
+  };
+
+  const renderDisplayModeToggle = () => {
+    return (
+      <button
+        onClick={toggleDisplayMode}
+        className="flex items-center justify-center p-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+        title={displayMode === "normal" ? "Currently: Normal Display" : "Currently: Chinese Only"}
+      >
+        {displayMode === "normal" ? (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
+            <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+          </svg>
+        )}
+      </button>
     );
   };
 
   // Render the filter button
   const renderFilterButton = () => {
     return (
-      <PwaWrapper>
-        <button
-          onClick={toggleCategoryFilter}
-          className="flex items-center justify-center px-3 py-2 bg-white border border-gray-300 rounded-md text-black text-sm hover:bg-gray-100"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-          </svg>
-          Filter
-          {selectedCategory !== undefined && selectedCategory !== null && (
-            <span className="ml-1 w-2 h-2 rounded-full" style={{ backgroundColor: categories.find(c => c.id === selectedCategory)?.color || '#ccc' }}></span>
-          )}
-        </button>
-      </PwaWrapper>
+      <button
+        onClick={toggleCategoryFilter}
+        className="flex items-center justify-center px-3 py-2 bg-white border border-gray-300 rounded-md text-black text-sm hover:bg-gray-100"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+        </svg>
+        Filter
+        {selectedCategory !== undefined && selectedCategory !== null && (
+          <span className="ml-1 w-2 h-2 rounded-full" style={{ backgroundColor: categories.find(c => c.id === selectedCategory)?.color || '#ccc' }}></span>
+        )}
+      </button>
     );
   };
 
@@ -373,6 +393,7 @@ export default function ReviewPage() {
       <div className="flex justify-between mb-6">
         <div className="flex space-x-2">
           {renderReviewModeToggle()}
+          {renderDisplayModeToggle()}
           {renderFilterButton()}
         </div>
       </div>
@@ -383,22 +404,20 @@ export default function ReviewPage() {
           <h2 className="text-xl font-bold mb-4 text-black">All Done!</h2>
           <p className="mb-6 text-gray-600">You've reviewed all the cards due for today in this category.</p>
           <div className="flex flex-col space-y-3">
-            <PwaWrapper href="/">
+            <a href="/">
               <button className="w-full py-3 px-4 bg-fl-salmon text-white rounded-md hover:bg-fl-salmon/90">
                 Create New Flashcard
               </button>
-            </PwaWrapper>
-            <PwaWrapper>
-              <button 
-                onClick={() => {
-                  setSelectedCategory(undefined);
-                  loadCardsForReview();
-                }}
-                className="w-full py-3 px-4 bg-fl-yellow text-white rounded-md hover:bg-fl-yellow/90"
-              >
-                Review All Categories
-              </button>
-            </PwaWrapper>
+            </a>
+            <button 
+              onClick={() => {
+                setSelectedCategory(undefined);
+                loadCardsForReview();
+              }}
+              className="w-full py-3 px-4 bg-fl-yellow text-white rounded-md hover:bg-fl-yellow/90"
+            >
+              Review All Categories
+            </button>
           </div>
         </div>
       )}
@@ -421,13 +440,22 @@ export default function ReviewPage() {
             {reviewMode === "chineseToEnglish" ? (
               <>
                 <div className="mb-6 text-center">
-                  <h2 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h2>
-                  <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
+                  {displayMode === "normal" ? (
+                    <>
+                      <h2 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h2>
+                      <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
+                    </>
+                  ) : (
+                    <h2 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h2>
+                  )}
                 </div>
                 
                 {showAnswer && (
                   <div className="mt-6 pt-6 border-t border-gray-200 text-center">
                     <p className="text-lg font-medium text-black">{currentCard.english}</p>
+                    {displayMode === "chineseOnly" && showAnswer && (
+                      <p className="text-lg text-gray-600 mt-2">{currentCard.pinyin}</p>
+                    )}
                   </div>
                 )}
               </>
@@ -439,8 +467,19 @@ export default function ReviewPage() {
                 
                 {showAnswer && (
                   <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-                    <h3 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h3>
-                    <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
+                    {displayMode === "normal" ? (
+                      <>
+                        <h3 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h3>
+                        <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h3>
+                        {displayMode === "chineseOnly" && showAnswer && (
+                          <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </>
@@ -453,43 +492,37 @@ export default function ReviewPage() {
       {!isFinished && currentCard && (
         <div className="flex flex-col items-center">
           {!showAnswer ? (
-            <PwaWrapper>
-              <button
-                onClick={handleShowAnswer}
-                className="w-full max-w-xs bg-gradient-to-r from-fl-salmon to-fl-red text-white py-3 px-6 rounded-lg hover:from-fl-red hover:to-fl-salmon font-medium shadow-md transition-all duration-300 flex items-center justify-center"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="16" x2="12" y2="12" />
-                  <line x1="12" y1="8" x2="12.01" y2="8" />
-                </svg>
-                Show Answer
-              </button>
-            </PwaWrapper>
+            <button
+              onClick={handleShowAnswer}
+              className="w-full max-w-xs bg-gradient-to-r from-fl-salmon to-fl-red text-white py-3 px-6 rounded-lg hover:from-fl-red hover:to-fl-salmon font-medium shadow-md transition-all duration-300 flex items-center justify-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              Show Answer
+            </button>
           ) : (
             <div className="flex space-x-4 justify-center w-full">
-              <PwaWrapper>
-                <button
-                  onClick={() => handleResult(false)}
-                  className="flex-1 max-w-xs bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-6 rounded-lg hover:from-red-600 hover:to-red-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                  </svg>
-                  Again
-                </button>
-              </PwaWrapper>
-              <PwaWrapper>
-                <button
-                  onClick={() => handleResult(true)}
-                  className="flex-1 max-w-xs bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-lg hover:from-green-600 hover:to-green-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Got It
-                </button>
-              </PwaWrapper>
+              <button
+                onClick={() => handleResult(false)}
+                className="flex-1 max-w-xs bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-6 rounded-lg hover:from-red-600 hover:to-red-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+                Again
+              </button>
+              <button
+                onClick={() => handleResult(true)}
+                className="flex-1 max-w-xs bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-lg hover:from-green-600 hover:to-green-500 font-medium shadow-md transition-all duration-300 flex items-center justify-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Got It
+              </button>
             </div>
           )}
         </div>

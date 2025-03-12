@@ -9,6 +9,11 @@ export function isRunningAsPwa(): boolean {
     return false; // Server-side rendering
   }
 
+  // Allow localhost to bypass PWA check for development
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return true;
+  }
+
   // Method 1: Check for display-mode: standalone
   if (window.matchMedia('(display-mode: standalone)').matches) {
     return true;
