@@ -59,6 +59,12 @@ export default function ListenPage() {
     }
   }, [cards.length, currentCardIndex, isFinished]);
   
+  // Add a useEffect to reload cards when selectedCategory changes
+  useEffect(() => {
+    console.log("Selected category changed to:", selectedCategory);
+    loadCardsForReview();
+  }, [selectedCategory]);
+  
   // Load cards for review based on selected category
   const loadCardsForReview = () => {
     let cardsToReview: Flashcard[] = [];
@@ -66,22 +72,32 @@ export default function ListenPage() {
     // Get today's date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
     console.log("Loading cards for listening review date:", today);
+    console.log("Current selected category:", selectedCategory);
     
-    // Always get fresh data from localStorage
+    // First get all cards due for listening review
+    const allDueCards = getFlashcardsForListeningReview(today);
+    console.log(`Found ${allDueCards.length} total cards due for listening review`);
+    
+    // Then apply category filter
     if (selectedCategory === undefined) {
       // All categories
-      cardsToReview = getFlashcardsForListeningReview(today);
+      cardsToReview = allDueCards;
+      console.log("Showing all categories");
     } else if (selectedCategory === null) {
       // No category
-      cardsToReview = getFlashcardsForListeningReview(today).filter(card => !card.categoryId);
+      cardsToReview = allDueCards.filter(card => !card.categoryId);
+      console.log("Filtering to show only cards with no category");
     } else {
       // Specific category
-      cardsToReview = getFlashcardsForListeningReview(today).filter(card => card.categoryId === selectedCategory);
+      cardsToReview = allDueCards.filter(card => card.categoryId === selectedCategory);
+      console.log(`Filtering to show only cards with category ID: ${selectedCategory}`);
     }
     
-    console.log(`Found ${cardsToReview.length} cards for listening review`);
+    console.log(`After filtering: ${cardsToReview.length} cards for listening review`);
+    
+    // Log each card for debugging
     cardsToReview.forEach(card => {
-      console.log(`Card: ${card.chinese}, Listening Level: ${card.listeningReviewLevel}, Next listening review: ${card.listeningNextReviewDate}`);
+      console.log(`Card: ${card.chinese}, Category: ${card.categoryId || 'none'}, Listening Level: ${card.listeningReviewLevel}`);
     });
     
     // Shuffle the cards
@@ -178,7 +194,7 @@ export default function ListenPage() {
     setAutoPlayEnabled(!autoPlayEnabled);
   };
   
-  // Category filter modal
+  // Update the category filter modal buttons to ensure they properly set the category
   const renderCategoryFilterModal = () => {
     if (!showCategoryFilter) return null;
     
@@ -191,9 +207,9 @@ export default function ListenPage() {
             <div className="flex flex-wrap gap-2 mb-4">
               <button
                 onClick={() => {
+                  console.log("Setting category to undefined (all categories)");
                   setSelectedCategory(undefined);
                   setShowCategoryFilter(false);
-                  loadCardsForReview();
                 }}
                 className={`px-3 py-2 rounded-md text-sm ${
                   selectedCategory === undefined
@@ -206,9 +222,9 @@ export default function ListenPage() {
               
               <button
                 onClick={() => {
+                  console.log("Setting category to null (no category)");
                   setSelectedCategory(null);
                   setShowCategoryFilter(false);
-                  loadCardsForReview();
                 }}
                 className={`px-3 py-2 rounded-md text-sm ${
                   selectedCategory === null
@@ -223,9 +239,9 @@ export default function ListenPage() {
                 <button
                   key={category.id}
                   onClick={() => {
+                    console.log(`Setting category to: ${category.id} (${category.name})`);
                     setSelectedCategory(category.id);
                     setShowCategoryFilter(false);
-                    loadCardsForReview();
                   }}
                   className={`px-3 py-2 rounded-md text-sm ${
                     selectedCategory === category.id
@@ -348,8 +364,12 @@ export default function ListenPage() {
             </Link>
             <button 
               onClick={() => {
+                console.log("Review All Categories button clicked");
                 setSelectedCategory(undefined);
-                loadCardsForReview();
+                // Force a reload of all cards
+                setTimeout(() => {
+                  loadCardsForReview();
+                }, 100);
               }}
               className="w-full py-3 px-4 bg-fl-yellow text-white rounded-md hover:bg-fl-yellow/90"
             >

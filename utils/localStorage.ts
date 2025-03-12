@@ -196,29 +196,38 @@ export function getFlashcardsForReadingReview(dateString: string = new Date().to
  * @param dateString The date to check for reviews (YYYY-MM-DD format)
  * @returns Array of flashcards due for listening review
  */
-export function getFlashcardsForListeningReview(dateString: string = new Date().toISOString().split('T')[0]): Flashcard[] {
-  const cards = getFlashcards();
-  const today = new Date(dateString);
-  today.setHours(0, 0, 0, 0); // Set to beginning of day
-  
-  console.log(`Getting flashcards for listening review on ${dateString}`);
-  
-  const cardsForReview = cards.filter(card => {
-    // Level 0 cards should always be included
-    if (card.listeningReviewLevel === 0) {
-      return true;
-    }
+export function getFlashcardsForListeningReview(currentDate: string): Flashcard[] {
+  try {
+    const flashcards = getFlashcards();
+    console.log(`Total flashcards in storage: ${flashcards.length}`);
     
-    // For other cards, compare dates properly
-    const reviewDate = new Date(card.listeningNextReviewDate);
-    reviewDate.setHours(0, 0, 0, 0); // Set to beginning of day
+    // Filter cards that are due for listening review
+    const cardsForReview = flashcards.filter(card => {
+      // Always include cards with listening level 0 (new cards)
+      if (card.listeningReviewLevel === 0) {
+        return true;
+      }
+      
+      // For other levels, check if the review date is today or earlier
+      if (card.listeningReviewLevel > 0 && card.listeningNextReviewDate) {
+        return card.listeningNextReviewDate <= currentDate;
+      }
+      
+      return false;
+    });
     
-    return reviewDate <= today;
-  });
-  
-  console.log(`Found ${cardsForReview.length} cards for listening review`);
-  
-  return cardsForReview;
+    console.log(`Found ${cardsForReview.length} cards due for listening review on ${currentDate}`);
+    
+    // Log each card's category for debugging
+    cardsForReview.forEach(card => {
+      console.log(`Due card: ${card.chinese}, Category: ${card.categoryId || 'none'}, Listening Level: ${card.listeningReviewLevel}`);
+    });
+    
+    return cardsForReview;
+  } catch (error) {
+    console.error('Error getting flashcards for listening review:', error);
+    return [];
+  }
 }
 
 /**
