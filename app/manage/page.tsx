@@ -107,12 +107,12 @@ export default function ManagePage() {
   const sortedCards = [...filteredCards].sort((a, b) => {
     if (sortByLevel) {
       // Get reading review levels, falling back to legacy review level if needed
-      const aLevel = a.readingReviewLevel !== undefined ? a.readingReviewLevel : a.reviewLevel;
-      const bLevel = b.readingReviewLevel !== undefined ? b.readingReviewLevel : b.reviewLevel;
+      const aReadingLevel = a.readingReviewLevel ?? (a.reviewLevel ?? 0);
+      const bReadingLevel = b.readingReviewLevel ?? (b.reviewLevel ?? 0);
       
       return sortDirection === "asc" 
-        ? aLevel - bLevel
-        : bLevel - aLevel;
+        ? aReadingLevel - bReadingLevel
+        : bReadingLevel - aReadingLevel;
     }
     
     // Default sort by creation date (newest first)
@@ -141,8 +141,8 @@ export default function ManagePage() {
       chinese: card.chinese,
       pinyin: card.pinyin,
       english: card.english,
-      readingReviewLevel: card.readingReviewLevel !== undefined ? card.readingReviewLevel : card.reviewLevel,
-      listeningReviewLevel: card.listeningReviewLevel !== undefined ? card.listeningReviewLevel : card.reviewLevel,
+      readingReviewLevel: card.readingReviewLevel ?? (card.reviewLevel ?? 0),
+      listeningReviewLevel: card.listeningReviewLevel ?? (card.reviewLevel ?? 0),
       categoryId: card.categoryId
     });
   };
@@ -228,27 +228,31 @@ export default function ManagePage() {
     }
   };
 
-  const getLevelLabel = (level: number): string => {
+  const getLevelLabel = (level: number | undefined): string => {
+    if (level === undefined) return "New";
+    
     switch(level) {
       case 0: return "New";
-      case 1: return "Beginner";
-      case 2: return "Basic";
-      case 3: return "Intermediate";
-      case 4: return "Advanced";
-      case 5: return "Master";
+      case 1: return "Level 1";
+      case 2: return "Level 2";
+      case 3: return "Level 3";
+      case 4: return "Level 4";
+      case 5: return "Level 5";
       default: return `Level ${level}`;
     }
   };
 
-  const getLevelDays = (level: number): string => {
+  const getLevelDays = (level: number | undefined): string => {
+    if (level === undefined) return "Today";
+    
     switch(level) {
-      case 0: return "today";
-      case 1: return "tomorrow";
-      case 2: return "in 2 days";
-      case 3: return "in 4 days";
-      case 4: return "in 8 days";
-      case 5: return "in 14 days";
-      default: return `in ${level} days`;
+      case 0: return "Today";
+      case 1: return "1 day";
+      case 2: return "3 days";
+      case 3: return "5 days";
+      case 4: return "10 days";
+      case 5: return "24 days";
+      default: return `${level} days`;
     }
   };
 
