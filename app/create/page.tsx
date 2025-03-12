@@ -103,6 +103,8 @@ export default function CreatePage() {
         readingNextReviewDate: new Date().toISOString().split('T')[0],
         listeningReviewLevel: 0,
         listeningNextReviewDate: new Date().toISOString().split('T')[0],
+        speakingReviewLevel: 0,
+        speakingNextReviewDate: new Date().toISOString().split('T')[0],
         reviewLevel: 0,
         nextReviewDate: new Date().toISOString(),
         createdAt: new Date().toISOString(),

@@ -18,6 +18,10 @@ export interface Flashcard {
   listeningReviewLevel: number;
   listeningNextReviewDate: string;
   
+  // New fields for speaking practice
+  speakingReviewLevel: number;
+  speakingNextReviewDate: string;
+  
   createdAt: string;
   categoryId?: string; // Optional category ID
 }

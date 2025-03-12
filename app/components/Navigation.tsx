@@ -41,8 +41,9 @@ export default function Navigation() {
         
         <div className="flex space-x-0.5 sm:space-x-1">
           <NavLink href="/" current={pathname === "/"}>Create</NavLink>
-          <NavLink href="/review" current={pathname === "/review"}>Review</NavLink>
-          <NavLink href="/listen" current={pathname === "/listen"}>Listen</NavLink>
+          <NavLink href="/review" current={pathname === "/review"}>读</NavLink>
+          <NavLink href="/listen" current={pathname === "/listen"}>听</NavLink>
+          <NavLink href="/speak" current={pathname === "/speak"}>说</NavLink>
           <NavLink href="/manage" current={pathname === "/manage"}>Manage</NavLink>
         </div>
       </div>

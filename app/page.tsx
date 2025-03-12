@@ -93,11 +93,13 @@ export default function HomePage() {
       chinese: translation.chinese,
       pinyin: translation.pinyin,
       english: translation.english,
-      // New fields for separate reading and listening practice
+      // Fields for separate reading, listening, and speaking practice
       readingReviewLevel: 0,
       readingNextReviewDate: today,
       listeningReviewLevel: 0,
       listeningNextReviewDate: today,
+      speakingReviewLevel: 0,
+      speakingNextReviewDate: today,
       createdAt: new Date().toISOString(),
       categoryId: selectedCategory
     };

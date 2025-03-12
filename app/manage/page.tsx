@@ -30,6 +30,7 @@ export default function ManagePage() {
     english: string;
     readingReviewLevel: number;
     listeningReviewLevel: number;
+    speakingReviewLevel: number;
     categoryId?: string;
   }>({ 
     chinese: "", 
@@ -37,6 +38,7 @@ export default function ManagePage() {
     english: "", 
     readingReviewLevel: 0,
     listeningReviewLevel: 0,
+    speakingReviewLevel: 0,
     categoryId: undefined
   });
   const [cardsForReview, setCardsForReview] = useState(0);
@@ -141,44 +143,62 @@ export default function ManagePage() {
       chinese: card.chinese,
       pinyin: card.pinyin,
       english: card.english,
-      readingReviewLevel: card.readingReviewLevel ?? (card.reviewLevel ?? 0),
-      listeningReviewLevel: card.listeningReviewLevel ?? (card.reviewLevel ?? 0),
+      readingReviewLevel: card.readingReviewLevel !== undefined ? card.readingReviewLevel : (card.reviewLevel || 0),
+      listeningReviewLevel: card.listeningReviewLevel !== undefined ? card.listeningReviewLevel : (card.reviewLevel || 0),
+      speakingReviewLevel: card.speakingReviewLevel !== undefined ? card.speakingReviewLevel : (card.reviewLevel || 0),
       categoryId: card.categoryId
     });
   };
 
   const handleSaveEdit = (card: Flashcard) => {
-    // Calculate next review date based on the level
+    if (!editingCard) return;
+    
+    // Calculate next review date based on level
     const today = new Date();
+    let readingDaysToAdd = 0;
+    let listeningDaysToAdd = 0;
+    let speakingDaysToAdd = 0;
+    
+    // Reading days calculation
+    switch(editValues.readingReviewLevel) {
+      case 0: readingDaysToAdd = 0; break;
+      case 1: readingDaysToAdd = 1; break;
+      case 2: readingDaysToAdd = 3; break;
+      case 3: readingDaysToAdd = 5; break;
+      case 4: readingDaysToAdd = 10; break;
+      case 5: readingDaysToAdd = 24; break;
+      default: readingDaysToAdd = 0;
+    }
+    
+    // Listening days calculation
+    switch(editValues.listeningReviewLevel) {
+      case 0: listeningDaysToAdd = 0; break;
+      case 1: listeningDaysToAdd = 1; break;
+      case 2: listeningDaysToAdd = 3; break;
+      case 3: listeningDaysToAdd = 5; break;
+      case 4: listeningDaysToAdd = 10; break;
+      case 5: listeningDaysToAdd = 24; break;
+      default: listeningDaysToAdd = 0;
+    }
+    
+    // Speaking days calculation
+    switch(editValues.speakingReviewLevel) {
+      case 0: speakingDaysToAdd = 0; break;
+      case 1: speakingDaysToAdd = 1; break;
+      case 2: speakingDaysToAdd = 3; break;
+      case 3: speakingDaysToAdd = 5; break;
+      case 4: speakingDaysToAdd = 10; break;
+      case 5: speakingDaysToAdd = 24; break;
+      default: speakingDaysToAdd = 0;
+    }
+    
     const readingNextReview = new Date(today);
     const listeningNextReview = new Date(today);
-    
-    // Calculate days to add for reading review
-    let readingDaysToAdd = 0;
-    switch(editValues.readingReviewLevel) {
-      case 0: readingDaysToAdd = 0; break;    // today
-      case 1: readingDaysToAdd = 1; break;    // tomorrow
-      case 2: readingDaysToAdd = 3; break;    // in 3 days
-      case 3: readingDaysToAdd = 5; break;    // in 5 days
-      case 4: readingDaysToAdd = 10; break;   // in 10 days
-      case 5: readingDaysToAdd = 24; break;   // in 24 days
-      default: readingDaysToAdd = editValues.readingReviewLevel; // fallback
-    }
-    
-    // Calculate days to add for listening review
-    let listeningDaysToAdd = 0;
-    switch(editValues.listeningReviewLevel) {
-      case 0: listeningDaysToAdd = 0; break;    // today
-      case 1: listeningDaysToAdd = 1; break;    // tomorrow
-      case 2: listeningDaysToAdd = 3; break;    // in 3 days
-      case 3: listeningDaysToAdd = 5; break;    // in 5 days
-      case 4: listeningDaysToAdd = 10; break;   // in 10 days
-      case 5: listeningDaysToAdd = 24; break;   // in 24 days
-      default: listeningDaysToAdd = editValues.listeningReviewLevel; // fallback
-    }
+    const speakingNextReview = new Date(today);
     
     readingNextReview.setDate(today.getDate() + readingDaysToAdd);
     listeningNextReview.setDate(today.getDate() + listeningDaysToAdd);
+    speakingNextReview.setDate(today.getDate() + speakingDaysToAdd);
     
     const updatedCard: Flashcard = {
       ...card,
@@ -194,6 +214,9 @@ export default function ManagePage() {
       // Listening fields
       listeningReviewLevel: editValues.listeningReviewLevel,
       listeningNextReviewDate: listeningNextReview.toISOString().split('T')[0],
+      // Speaking fields
+      speakingReviewLevel: editValues.speakingReviewLevel,
+      speakingNextReviewDate: speakingNextReview.toISOString().split('T')[0],
       categoryId: editValues.categoryId
     };
     
@@ -690,6 +713,11 @@ export default function ManagePage() {
                 : (typeof flashcard.reviewLevel === 'number' ? flashcard.reviewLevel : 0),
               listeningNextReviewDate: flashcard.listeningNextReviewDate || flashcard.nextReviewDate || today,
               
+              speakingReviewLevel: typeof flashcard.speakingReviewLevel === 'number' 
+                ? flashcard.speakingReviewLevel 
+                : (typeof flashcard.reviewLevel === 'number' ? flashcard.reviewLevel : 0),
+              speakingNextReviewDate: flashcard.speakingNextReviewDate || flashcard.nextReviewDate || today,
+              
               createdAt: flashcard.createdAt || new Date().toISOString()
             };
             
@@ -734,6 +762,15 @@ export default function ManagePage() {
                     : existingCard.reviewLevel),
               listeningNextReviewDate: flashcard.listeningNextReviewDate 
                 || existingCard.listeningNextReviewDate 
+                || existingCard.nextReviewDate,
+              
+              speakingReviewLevel: typeof flashcard.speakingReviewLevel === 'number' 
+                ? flashcard.speakingReviewLevel 
+                : (existingCard.speakingReviewLevel !== undefined 
+                    ? existingCard.speakingReviewLevel 
+                    : existingCard.reviewLevel),
+              speakingNextReviewDate: flashcard.speakingNextReviewDate 
+                || existingCard.speakingNextReviewDate 
                 || existingCard.nextReviewDate,
               
               createdAt: existingCard.createdAt // Preserve original creation date
@@ -1210,6 +1247,29 @@ export default function ManagePage() {
                     </p>
                   </div>
 
+                  {/* Speaking Review Level */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-black mb-2">Speaking Review Level</label>
+                    <div className="grid grid-cols-6 gap-1">
+                      {[0, 1, 2, 3, 4, 5].map(level => (
+                        <PwaWrapper
+                          key={level}
+                          onClick={() => setEditValues({...editValues, speakingReviewLevel: level})}
+                          className={`px-2 py-1 rounded-md text-sm ${
+                            editValues.speakingReviewLevel === level 
+                              ? 'bg-purple-500 text-white' 
+                              : 'bg-gray-200 text-black hover:bg-gray-300'
+                          }`}
+                        >
+                          {level}
+                        </PwaWrapper>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-sm text-gray-600">
+                      {getLevelLabel(editValues.speakingReviewLevel)} - Speaking review {getLevelDays(editValues.speakingReviewLevel)}
+                    </p>
+                  </div>
+
                   <div className="flex space-x-2">
                     <PwaWrapper
                       onClick={() => handleSaveEdit(card)}
@@ -1261,6 +1321,20 @@ export default function ManagePage() {
                       </span>
                       <span className="text-gray-600">
                         (Next: {card.listeningNextReviewDate || card.nextReviewDate})
+                      </span>
+                    </div>
+                    
+                    {/* Speaking review level */}
+                    <div className="flex flex-wrap items-center mb-1">
+                      <span className="inline-flex items-center mr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                        </svg>
+                        Speaking Level {card.speakingReviewLevel !== undefined ? card.speakingReviewLevel : card.reviewLevel}: 
+                        {getLevelLabel(card.speakingReviewLevel !== undefined ? card.speakingReviewLevel : card.reviewLevel)}
+                      </span>
+                      <span className="text-gray-600">
+                        (Next: {card.speakingNextReviewDate || card.nextReviewDate})
                       </span>
                     </div>
                   </div>
