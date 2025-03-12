@@ -86,13 +86,18 @@ export default function HomePage() {
   const handleSave = () => {
     if (!translation) return;
     
+    const today = new Date().toISOString().split('T')[0];
+    
     const newCard: Flashcard = {
       id: uuidv4(),
       chinese: translation.chinese,
       pinyin: translation.pinyin,
       english: translation.english,
-      reviewLevel: 0,
-      nextReviewDate: new Date().toISOString().split('T')[0],
+      // New fields for separate reading and listening practice
+      readingReviewLevel: 0,
+      readingNextReviewDate: today,
+      listeningReviewLevel: 0,
+      listeningNextReviewDate: today,
       createdAt: new Date().toISOString(),
       categoryId: selectedCategory
     };

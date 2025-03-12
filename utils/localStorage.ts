@@ -32,7 +32,7 @@ export function addFlashcard(card: Flashcard): boolean {
     return false;
   }
   
-  // Otherwise, add the card and return true to indicate success
+  // Add the card and return true to indicate success
   cards.push(card);
   localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(cards));
   return true;
@@ -65,80 +65,13 @@ export function clearAllFlashcards(): void {
 }
 
 export function getFlashcardsForReview(dateString: string = new Date().toISOString().split('T')[0]): Flashcard[] {
-  const cards = getFlashcards();
-  const today = new Date(dateString);
-  today.setHours(0, 0, 0, 0); // Set to beginning of day
-  
-  console.log(`Getting flashcards for review on ${dateString}`);
-  
-  const cardsForReview = cards.filter(card => {
-    // Level 0 cards should always be included
-    if (card.reviewLevel === 0) {
-      console.log(`Including level 0 card: ${card.chinese}`);
-      return true;
-    }
-    
-    // For other cards, compare dates properly
-    const reviewDate = new Date(card.nextReviewDate);
-    reviewDate.setHours(0, 0, 0, 0); // Set to beginning of day
-    
-    const shouldInclude = reviewDate <= today;
-    if (shouldInclude) {
-      console.log(`Including card: ${card.chinese}, level: ${card.reviewLevel}, next review: ${card.nextReviewDate}`);
-    }
-    
-    return shouldInclude;
-  });
-  
-  console.log(`Found ${cardsForReview.length} cards for review`);
-  
-  return cardsForReview;
+  // This function is now deprecated - use getFlashcardsForReadingReview or getFlashcardsForListeningReview instead
+  return getFlashcardsForReadingReview(dateString);
 }
 
 export function updateReviewStatus(id: string, successful: boolean): void {
-  const cards = getFlashcards();
-  const index = cards.findIndex(card => card.id === id);
-  
-  if (index !== -1) {
-    const card = cards[index];
-    
-    // Calculate next review date based on spaced repetition
-    const today = new Date();
-    let nextLevel: number;
-    
-    if (successful) {
-      // If review was successful, increase the level (up to level 5)
-      nextLevel = Math.min(card.reviewLevel + 1, 5);
-    } else {
-      // If review failed, reset to level 0
-      nextLevel = 0;
-    }
-    
-    // Use our new pattern to determine days until next review
-    let daysToAdd = 0;
-    switch(nextLevel) {
-      case 0: daysToAdd = 0; break;    // today
-      case 1: daysToAdd = 1; break;    // tomorrow
-      case 2: daysToAdd = 2; break;    // in 2 days
-      case 3: daysToAdd = 4; break;    // in 4 days
-      case 4: daysToAdd = 8; break;    // in 8 days
-      case 5: daysToAdd = 14; break;   // in 14 days
-      default: daysToAdd = nextLevel;  // fallback
-    }
-    
-    // Set the next review date
-    const nextReview = new Date(today);
-    nextReview.setDate(today.getDate() + daysToAdd);
-    
-    // Update the card
-    cards[index] = {
-      ...card,
-      reviewLevel: nextLevel,
-      nextReviewDate: nextReview.toISOString().split('T')[0]
-    };
-    
-    localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(cards));
-  }
+  // This function is now deprecated - use updateReadingReviewLevel or updateListeningReviewLevel instead
+  updateReadingReviewLevel(id, successful);
 }
 
 export function getFlashcard(id: string): Flashcard | null {
@@ -150,57 +83,11 @@ export function getFlashcard(id: string): Flashcard | null {
  * Updates a flashcard's review level based on whether the review was successful
  * @param id The flashcard ID
  * @param successful Whether the review was successful
+ * @deprecated Use updateReadingReviewLevel or updateListeningReviewLevel instead
  */
 export function updateFlashcardReviewLevel(id: string, successful: boolean): void {
-  const flashcards = getFlashcards();
-  const cardIndex = flashcards.findIndex(card => card.id === id);
-  
-  if (cardIndex === -1) return;
-  
-  const card = flashcards[cardIndex];
-  
-  // Update the review level
-  if (successful) {
-    // If successful, move up one level (max level is 5)
-    // If the card is at level 0, set it to level 1
-    // Otherwise, increment by 1 up to max level 5
-    if (card.reviewLevel === 0) {
-      card.reviewLevel = 1;
-    } else {
-      card.reviewLevel = Math.min(card.reviewLevel + 1, 5);
-    }
-  } else {
-    // If unsuccessful, reset to level 0 but keep in review queue
-    card.reviewLevel = 0;
-  }
-  
-  // Calculate the next review date based on the new level
-  const today = new Date();
-  const nextReview = new Date(today);
-  
-  // Set the next review date based on the new level using the requested progression
-  let daysToAdd = 0;
-  switch(card.reviewLevel) {
-    case 0: daysToAdd = 0; break;    // today (review again in the same session)
-    case 1: daysToAdd = 1; break;    // in 1 day
-    case 2: daysToAdd = 3; break;    // in 3 days
-    case 3: daysToAdd = 5; break;    // in 5 days
-    case 4: daysToAdd = 10; break;   // in 10 days
-    case 5: daysToAdd = 24; break;   // in 24 days
-    default: daysToAdd = 1; // fallback to 1 day
-  }
-  
-  nextReview.setDate(today.getDate() + daysToAdd);
-  
-  // Format the date as YYYY-MM-DD
-  card.nextReviewDate = nextReview.toISOString().split('T')[0];
-  
-  // For debugging
-  console.log(`Updated card ${card.chinese} to level ${card.reviewLevel}, next review on ${card.nextReviewDate}`);
-  
-  // Update the flashcard in storage
-  flashcards[cardIndex] = card;
-  localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(flashcards));
+  // This function is now deprecated - use updateReadingReviewLevel or updateListeningReviewLevel instead
+  updateReadingReviewLevel(id, successful);
 }
 
 // Category Management Functions
@@ -272,4 +159,174 @@ export function getFlashcardsByCategory(categoryId: string | null): Flashcard[] 
   }
   
   return flashcards.filter(card => card.categoryId === categoryId);
+}
+
+/**
+ * Gets flashcards due for reading review on the specified date
+ * @param dateString The date to check for reviews (YYYY-MM-DD format)
+ * @returns Array of flashcards due for reading review
+ */
+export function getFlashcardsForReadingReview(dateString: string = new Date().toISOString().split('T')[0]): Flashcard[] {
+  const cards = getFlashcards();
+  const today = new Date(dateString);
+  today.setHours(0, 0, 0, 0); // Set to beginning of day
+  
+  console.log(`Getting flashcards for reading review on ${dateString}`);
+  
+  const cardsForReview = cards.filter(card => {
+    // Level 0 cards should always be included
+    if (card.readingReviewLevel === 0) {
+      return true;
+    }
+    
+    // For other cards, compare dates properly
+    const reviewDate = new Date(card.readingNextReviewDate);
+    reviewDate.setHours(0, 0, 0, 0); // Set to beginning of day
+    
+    return reviewDate <= today;
+  });
+  
+  console.log(`Found ${cardsForReview.length} cards for reading review`);
+  
+  return cardsForReview;
+}
+
+/**
+ * Gets flashcards due for listening review on the specified date
+ * @param dateString The date to check for reviews (YYYY-MM-DD format)
+ * @returns Array of flashcards due for listening review
+ */
+export function getFlashcardsForListeningReview(dateString: string = new Date().toISOString().split('T')[0]): Flashcard[] {
+  const cards = getFlashcards();
+  const today = new Date(dateString);
+  today.setHours(0, 0, 0, 0); // Set to beginning of day
+  
+  console.log(`Getting flashcards for listening review on ${dateString}`);
+  
+  const cardsForReview = cards.filter(card => {
+    // Level 0 cards should always be included
+    if (card.listeningReviewLevel === 0) {
+      return true;
+    }
+    
+    // For other cards, compare dates properly
+    const reviewDate = new Date(card.listeningNextReviewDate);
+    reviewDate.setHours(0, 0, 0, 0); // Set to beginning of day
+    
+    return reviewDate <= today;
+  });
+  
+  console.log(`Found ${cardsForReview.length} cards for listening review`);
+  
+  return cardsForReview;
+}
+
+/**
+ * Updates a flashcard's reading review level based on whether the review was successful
+ * @param id The flashcard ID
+ * @param successful Whether the review was successful
+ */
+export function updateReadingReviewLevel(id: string, successful: boolean): void {
+  const flashcards = getFlashcards();
+  const cardIndex = flashcards.findIndex(card => card.id === id);
+  
+  if (cardIndex === -1) return;
+  
+  const card = flashcards[cardIndex];
+  
+  // Update the reading review level
+  if (successful) {
+    // If successful, move up one level (max level is 5)
+    if (card.readingReviewLevel === 0) {
+      card.readingReviewLevel = 1;
+    } else {
+      card.readingReviewLevel = Math.min(card.readingReviewLevel + 1, 5);
+    }
+  } else {
+    // If unsuccessful, reset to level 0
+    card.readingReviewLevel = 0;
+  }
+  
+  // Calculate the next review date based on the new level
+  const today = new Date();
+  const nextReview = new Date(today);
+  
+  // Set the next review date based on the new level
+  let daysToAdd = 0;
+  switch(card.readingReviewLevel) {
+    case 0: daysToAdd = 0; break;    // today (review again in the same session)
+    case 1: daysToAdd = 1; break;    // in 1 day
+    case 2: daysToAdd = 3; break;    // in 3 days
+    case 3: daysToAdd = 5; break;    // in 5 days
+    case 4: daysToAdd = 10; break;   // in 10 days
+    case 5: daysToAdd = 24; break;   // in 24 days
+    default: daysToAdd = 1; // fallback to 1 day
+  }
+  
+  nextReview.setDate(today.getDate() + daysToAdd);
+  
+  // Format the date as YYYY-MM-DD
+  card.readingNextReviewDate = nextReview.toISOString().split('T')[0];
+  
+  // For debugging
+  console.log(`Updated card ${card.chinese} reading level to ${card.readingReviewLevel}, next review on ${card.readingNextReviewDate}`);
+  
+  // Update the flashcard in storage
+  flashcards[cardIndex] = card;
+  localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(flashcards));
+}
+
+/**
+ * Updates a flashcard's listening review level based on whether the review was successful
+ * @param id The flashcard ID
+ * @param successful Whether the review was successful
+ */
+export function updateListeningReviewLevel(id: string, successful: boolean): void {
+  const flashcards = getFlashcards();
+  const cardIndex = flashcards.findIndex(card => card.id === id);
+  
+  if (cardIndex === -1) return;
+  
+  const card = flashcards[cardIndex];
+  
+  // Update the listening review level
+  if (successful) {
+    // If successful, move up one level (max level is 5)
+    if (card.listeningReviewLevel === 0) {
+      card.listeningReviewLevel = 1;
+    } else {
+      card.listeningReviewLevel = Math.min(card.listeningReviewLevel + 1, 5);
+    }
+  } else {
+    // If unsuccessful, reset to level 0
+    card.listeningReviewLevel = 0;
+  }
+  
+  // Calculate the next review date based on the new level
+  const today = new Date();
+  const nextReview = new Date(today);
+  
+  // Set the next review date based on the new level
+  let daysToAdd = 0;
+  switch(card.listeningReviewLevel) {
+    case 0: daysToAdd = 0; break;    // today (review again in the same session)
+    case 1: daysToAdd = 1; break;    // in 1 day
+    case 2: daysToAdd = 3; break;    // in 3 days
+    case 3: daysToAdd = 5; break;    // in 5 days
+    case 4: daysToAdd = 10; break;   // in 10 days
+    case 5: daysToAdd = 24; break;   // in 24 days
+    default: daysToAdd = 1; // fallback to 1 day
+  }
+  
+  nextReview.setDate(today.getDate() + daysToAdd);
+  
+  // Format the date as YYYY-MM-DD
+  card.listeningNextReviewDate = nextReview.toISOString().split('T')[0];
+  
+  // For debugging
+  console.log(`Updated card ${card.chinese} listening level to ${card.listeningReviewLevel}, next review on ${card.listeningNextReviewDate}`);
+  
+  // Update the flashcard in storage
+  flashcards[cardIndex] = card;
+  localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(flashcards));
 } 

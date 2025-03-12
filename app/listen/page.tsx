@@ -1,28 +1,30 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { getFlashcardsForReadingReview, updateReadingReviewLevel, getFlashcards, getCategories, getFlashcardsByCategory, getFlashcard } from "@/utils/localStorage";
+import { useState, useEffect } from "react";
+import { 
+  getFlashcardsForListeningReview, 
+  updateListeningReviewLevel, 
+  getFlashcards, 
+  getCategories 
+} from "@/utils/localStorage";
 import Link from "next/link";
 import { Flashcard, Category } from "@/types";
-import { isRunningAsPwa, getPwaInstallMessage } from "@/utils/pwaUtils";
-import PwaWrapper from "@/app/components/PwaWrapper";
-import { isSpeechSupported } from "@/utils/audioUtils";
+import AudioButton from "@/app/components/AudioButton";
+import { isSpeechSupported, speakChinese } from "@/utils/audioUtils";
 
-export default function ReviewPage() {
+export default function ListenPage() {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
-  const [reviewMode, setReviewMode] = useState<"chineseToEnglish" | "englishToChinese">("chineseToEnglish");
-  const [displayMode, setDisplayMode] = useState<"normal" | "chineseOnly">("normal");
   const [reviewedCards, setReviewedCards] = useState<Set<string>>(new Set());
   const [totalCards, setTotalCards] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null | undefined>(undefined);
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
-  const [showPwaMessage, setShowPwaMessage] = useState<boolean>(false);
-  const [isPwa, setIsPwa] = useState<boolean>(false);
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   
   useEffect(() => {
     // Check if speech synthesis is supported
@@ -38,56 +40,24 @@ export default function ReviewPage() {
     
     // Load initial cards for review (all categories)
     loadCardsForReview();
-    
-    // Set up a refresh interval to check for new cards
-    const refreshInterval = setInterval(() => {
-      // Check if there are any new cards to review
-      const today = new Date().toISOString().split('T')[0];
-      let cardsToReview = getFlashcardsForReadingReview(today);
-      
-      // Apply category filter if needed
-      if (selectedCategory === null) {
-        // No category
-        cardsToReview = cardsToReview.filter(card => !card.categoryId);
-      } else if (selectedCategory !== undefined) {
-        // Specific category
-        cardsToReview = cardsToReview.filter(card => card.categoryId === selectedCategory);
-      }
-      
-      // If we're showing "all done" but there are cards to review, refresh
-      if (isFinished && cardsToReview.length > 0) {
-        console.log(`Found ${cardsToReview.length} new cards to review, refreshing...`);
-        loadCardsForReview();
-      }
-    }, 2000); // Check every 2 seconds
-    
-    return () => clearInterval(refreshInterval);
-  }, [isFinished, selectedCategory]); // Re-run when isFinished or selectedCategory changes
+  }, []);
   
   // Effect to handle changes to the cards array
   useEffect(() => {
     // If we have no cards, mark as finished
     if (cards.length === 0) {
-      console.log("No cards to review, marking as finished");
       setIsFinished(true);
     } else if (isFinished) {
       // If we have cards but isFinished is true, set it to false
-      console.log("Cards available but marked as finished, correcting...");
       setIsFinished(false);
     }
     
     // If we've removed a card and the currentCardIndex is now out of bounds,
     // adjust it to the last card in the array
     if (currentCardIndex >= cards.length && cards.length > 0) {
-      console.log(`Current index (${currentCardIndex}) is beyond cards length (${cards.length}), adjusting...`);
       setCurrentCardIndex(cards.length - 1);
     }
-  }, [cards.length, currentCardIndex, isFinished]); // Depend on cards.length, currentCardIndex, and isFinished
-  
-  // Check if running as PWA on mount
-  useEffect(() => {
-    setIsPwa(isRunningAsPwa());
-  }, []);
+  }, [cards.length, currentCardIndex, isFinished]);
   
   // Load cards for review based on selected category
   const loadCardsForReview = () => {
@@ -95,23 +65,23 @@ export default function ReviewPage() {
     
     // Get today's date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
-    console.log("Loading cards for reading review date:", today);
+    console.log("Loading cards for listening review date:", today);
     
     // Always get fresh data from localStorage
     if (selectedCategory === undefined) {
       // All categories
-      cardsToReview = getFlashcardsForReadingReview(today);
+      cardsToReview = getFlashcardsForListeningReview(today);
     } else if (selectedCategory === null) {
       // No category
-      cardsToReview = getFlashcardsForReadingReview(today).filter(card => !card.categoryId);
+      cardsToReview = getFlashcardsForListeningReview(today).filter(card => !card.categoryId);
     } else {
       // Specific category
-      cardsToReview = getFlashcardsForReadingReview(today).filter(card => card.categoryId === selectedCategory);
+      cardsToReview = getFlashcardsForListeningReview(today).filter(card => card.categoryId === selectedCategory);
     }
     
-    console.log(`Found ${cardsToReview.length} cards for reading review`);
+    console.log(`Found ${cardsToReview.length} cards for listening review`);
     cardsToReview.forEach(card => {
-      console.log(`Card: ${card.chinese}, Reading Level: ${card.readingReviewLevel}, Next reading review: ${card.readingNextReviewDate}`);
+      console.log(`Card: ${card.chinese}, Listening Level: ${card.listeningReviewLevel}, Next listening review: ${card.listeningNextReviewDate}`);
     });
     
     // Shuffle the cards
@@ -130,17 +100,26 @@ export default function ReviewPage() {
     ? cards[currentCardIndex] 
     : null;
   
-  // Debug log for card state
+  // Effect to handle auto-play when a new card is shown
   useEffect(() => {
-    if (cards.length > 0) {
-      console.log(`Cards state updated: ${cards.length} cards, current index: ${currentCardIndex}`);
-      if (currentCard) {
-        console.log(`Current card: ${currentCard.chinese}, Reading Level: ${currentCard.readingReviewLevel}`);
-      } else {
-        console.log(`No current card at index ${currentCardIndex}`);
-      }
+    if (autoPlayEnabled && currentCard && !showAnswer && !isPlaying && speechSupported) {
+      // Add a small delay to ensure the UI has updated
+      const timer = setTimeout(() => {
+        setIsPlaying(true);
+        // Use a slightly slower rate (0.75) for more natural pronunciation
+        speakChinese(currentCard.chinese, 1)
+          .then(() => {
+            setIsPlaying(false);
+          })
+          .catch((error) => {
+            console.error("Error playing audio:", error);
+            setIsPlaying(false);
+          });
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
-  }, [cards, currentCardIndex, currentCard]);
+  }, [currentCard, currentCardIndex, autoPlayEnabled, showAnswer, speechSupported, isPlaying]);
   
   const handleShowAnswer = () => {
     setShowAnswer(true);
@@ -149,54 +128,29 @@ export default function ReviewPage() {
   const handleResult = (successful: boolean) => {
     if (!currentCard) return;
     
-    // Update reading review level in localStorage
-    updateReadingReviewLevel(currentCard.id, successful);
+    // Update listening review level in localStorage
+    updateListeningReviewLevel(currentCard.id, successful);
     
     // Add to reviewed cards set
     setReviewedCards(prev => new Set(prev).add(currentCard.id));
     
-    if (!successful) {
-      // If marked as "Again", we need to:
-      // 1. Get the updated card from localStorage (with readingReviewLevel=0)
-      // 2. Add it back to the end of the queue
-      const updatedCard = getFlashcard(currentCard.id);
-      
-      if (updatedCard) {
-        console.log(`Card "${updatedCard.chinese}" marked as "Again" - adding back to queue with reading level ${updatedCard.readingReviewLevel}`);
+    if (successful) {
+      // If marked as "Got It", remove the card from the queue and move to the next card
+      setCards(prevCards => {
+        // Remove the current card from the array
+        const updatedCards = prevCards.filter((_, index) => index !== currentCardIndex);
+        console.log(`Card removed from queue. Remaining cards: ${updatedCards.length}`);
         
-        // Update our cards array with the modified card at the end
-        setCards(prevCards => {
-          // First, find the current index of the card
-          const currentIndex = prevCards.findIndex(card => card.id === currentCard.id);
-          
-          // Create a new array without the current card
-          const newCards = prevCards.filter((_, index) => index !== currentIndex);
-          
-          // Add the updated card to the end
-          const updatedCards = [...newCards, updatedCard];
-          
-          console.log(`Cards queue updated: ${updatedCards.length} cards total`);
-          
-          return updatedCards;
-        });
-        
-        // If we're at the last card, we need to adjust the index
-        if (currentCardIndex >= cards.length - 1) {
-          // We're at the end, so we need to adjust to show the next card
-          // which will be the last card in the array after our update
-          setCurrentCardIndex(cards.length - 2);
-        }
-      } else {
-        console.error(`Could not find card ${currentCard.id} in localStorage`);
-        // Just move to the next card
-        if (currentCardIndex < cards.length - 1) {
-          setCurrentCardIndex(prev => prev + 1);
-        } else {
+        // Check if we've reached the end of the queue
+        if (currentCardIndex >= updatedCards.length) {
+          // We've removed the last card, so set isFinished
           setIsFinished(true);
         }
-      }
+        
+        return updatedCards;
+      });
     } else {
-      // If marked as "Got It", just move to the next card
+      // If marked as "Again", just move to the next card
       if (currentCardIndex < cards.length - 1) {
         setCurrentCardIndex(prev => prev + 1);
       } else {
@@ -206,18 +160,6 @@ export default function ReviewPage() {
     
     // Reset showAnswer for the next card
     setShowAnswer(false);
-  };
-
-  const toggleReviewMode = () => {
-    setReviewMode(prev => 
-      prev === "chineseToEnglish" ? "englishToChinese" : "chineseToEnglish"
-    );
-  };
-
-  const toggleDisplayMode = () => {
-    setDisplayMode(prev => 
-      prev === "normal" ? "chineseOnly" : "normal"
-    );
   };
   
   // Get category for current card
@@ -229,6 +171,11 @@ export default function ReviewPage() {
   // Toggle category filter modal
   const toggleCategoryFilter = () => {
     setShowCategoryFilter(!showCategoryFilter);
+  };
+  
+  // Toggle auto-play feature
+  const toggleAutoPlay = () => {
+    setAutoPlayEnabled(!autoPlayEnabled);
   };
   
   // Category filter modal
@@ -246,6 +193,7 @@ export default function ReviewPage() {
                 onClick={() => {
                   setSelectedCategory(undefined);
                   setShowCategoryFilter(false);
+                  loadCardsForReview();
                 }}
                 className={`px-3 py-2 rounded-md text-sm ${
                   selectedCategory === undefined
@@ -260,6 +208,7 @@ export default function ReviewPage() {
                 onClick={() => {
                   setSelectedCategory(null);
                   setShowCategoryFilter(false);
+                  loadCardsForReview();
                 }}
                 className={`px-3 py-2 rounded-md text-sm ${
                   selectedCategory === null
@@ -276,6 +225,7 @@ export default function ReviewPage() {
                   onClick={() => {
                     setSelectedCategory(category.id);
                     setShowCategoryFilter(false);
+                    loadCardsForReview();
                   }}
                   className={`px-3 py-2 rounded-md text-sm ${
                     selectedCategory === category.id
@@ -303,49 +253,6 @@ export default function ReviewPage() {
     );
   };
 
-  // Render the review mode toggle button
-  const renderReviewModeToggle = () => {
-    return (
-      <button
-        onClick={toggleReviewMode}
-        className="flex items-center justify-center p-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-        title={reviewMode === "chineseToEnglish" ? "Currently: Chinese → English" : "Currently: English → Chinese"}
-      >
-        {reviewMode === "chineseToEnglish" ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-        )}
-      </button>
-    );
-  };
-
-  const renderDisplayModeToggle = () => {
-    return (
-      <button
-        onClick={toggleDisplayMode}
-        className="flex items-center justify-center p-2 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-        title={displayMode === "normal" ? "Currently: Normal Display" : "Currently: Chinese Only"}
-      >
-        {displayMode === "normal" ? (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z" clipRule="evenodd" />
-            <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
-          </svg>
-        )}
-      </button>
-    );
-  };
-
   // Render the filter button
   const renderFilterButton = () => {
     return (
@@ -364,11 +271,45 @@ export default function ReviewPage() {
     );
   };
 
+  // Render the auto-play toggle button
+  const renderAutoPlayToggle = () => {
+    return (
+      <button
+        onClick={toggleAutoPlay}
+        className={`flex items-center justify-center px-3 py-2 rounded-md transition-colors ${
+          autoPlayEnabled 
+            ? 'bg-fl-salmon text-white' 
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        }`}
+        title={autoPlayEnabled ? "Auto-play enabled" : "Auto-play disabled"}
+      >
+        {autoPlayEnabled ? (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 002 0V8a1 1 0 00-1-1zm4 0a1 1 0 00-1 1v4a1 1 0 002 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+        )}
+        <span className="text-sm">Auto-Play</span>
+      </button>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-md bg-white min-h-screen text-black">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-black">Review Flashcards</h1>
+        <h1 className="text-2xl font-bold text-black">Listening Practice</h1>
       </div>
+      
+      {!speechSupported && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6">
+          <p className="text-yellow-700">
+            Your browser doesn't support text-to-speech. Please try a different browser for the listening mode.
+          </p>
+        </div>
+      )}
       
       {/* Stats */}
       <div className="bg-white rounded-lg shadow-md p-3 mb-6">
@@ -380,7 +321,6 @@ export default function ReviewPage() {
           <div className="text-center p-2 bg-fl-yellow/10 rounded-lg flex-1 ml-2">
             <p className="text-xs sm:text-sm text-black font-medium mb-1">To Review</p>
             <p className="text-xl sm:text-2xl font-bold text-fl-yellow-DEFAULT">
-              {/* Show remaining cards count (total - current index) */}
               {Math.max(0, cards.length - currentCardIndex)}
             </p>
           </div>
@@ -390,8 +330,7 @@ export default function ReviewPage() {
       {/* Controls */}
       <div className="flex justify-between mb-6">
         <div className="flex space-x-2">
-          {renderReviewModeToggle()}
-          {renderDisplayModeToggle()}
+          {renderAutoPlayToggle()}
           {renderFilterButton()}
         </div>
       </div>
@@ -402,11 +341,11 @@ export default function ReviewPage() {
           <h2 className="text-xl font-bold mb-4 text-black">All Done!</h2>
           <p className="mb-6 text-gray-600">You've reviewed all the cards due for today in this category.</p>
           <div className="flex flex-col space-y-3">
-            <a href="/">
+            <Link href="/">
               <button className="w-full py-3 px-4 bg-fl-salmon text-white rounded-md hover:bg-fl-salmon/90">
                 Create New Flashcard
               </button>
-            </a>
+            </Link>
             <button 
               onClick={() => {
                 setSelectedCategory(undefined);
@@ -435,61 +374,25 @@ export default function ReviewPage() {
           
           {/* Card content */}
           <div className="p-6">
-            {reviewMode === "chineseToEnglish" ? (
-              <>
-                <div className="mb-6 text-center">
-                  {displayMode === "normal" ? (
-                    <>
-                      <div className="flex items-center justify-center">
-                        <h2 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h2>
-                      </div>
-                      <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <h2 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h2>
-                    </div>
-                  )}
+            <div className="mb-6 text-center">
+              <div className="flex justify-center mb-4">
+                <AudioButton 
+                  text={currentCard.chinese} 
+                  size="lg"
+                  showText={true}
+                  isPlayingExternal={isPlaying}
+                  onPlayStateChange={(playing) => setIsPlaying(playing)}
+                />
+              </div>
+              
+              {showAnswer && (
+                <div className="mt-2">
+                  <h2 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h2>
+                  <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
+                  <p className="text-lg font-medium text-black mt-4">{currentCard.english}</p>
                 </div>
-                
-                {showAnswer && (
-                  <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-                    <p className="text-lg font-medium text-black">{currentCard.english}</p>
-                    {displayMode === "chineseOnly" && showAnswer && (
-                      <p className="text-lg text-gray-600 mt-2">{currentCard.pinyin}</p>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="mb-6 text-center">
-                  <h2 className="text-2xl font-bold mb-2 text-black">{currentCard.english}</h2>
-                </div>
-                
-                {showAnswer && (
-                  <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-                    {displayMode === "normal" ? (
-                      <>
-                        <div className="flex items-center justify-center">
-                          <h3 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h3>
-                        </div>
-                        <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-center">
-                          <h3 className="text-3xl font-bold mb-2 text-black">{currentCard.chinese}</h3>
-                        </div>
-                        {displayMode === "chineseOnly" && showAnswer && (
-                          <p className="text-lg text-gray-600">{currentCard.pinyin}</p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

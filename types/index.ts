@@ -8,8 +8,16 @@ export interface Flashcard {
     pinyin: string;
     english: string;
   };
-  nextReviewDate: string;
-  reviewLevel: number; // 0, 1, 2, 4, 8, 16, etc. (days)
+  // Legacy fields (kept for backward compatibility)
+  nextReviewDate?: string;
+  reviewLevel?: number; // 0, 1, 2, 4, 8, 16, etc. (days)
+  
+  // New fields for separate reading and listening practice
+  readingReviewLevel: number;
+  readingNextReviewDate: string;
+  listeningReviewLevel: number;
+  listeningNextReviewDate: string;
+  
   createdAt: string;
   categoryId?: string; // Optional category ID
 }
