@@ -52,10 +52,15 @@ export default function Navigation() {
 }
 
 function NavLink({ href, current, children }: { href: string; current: boolean; children: React.ReactNode }) {
+  // Check if the content is a Chinese character (读, 听, 说)
+  const isChinese = typeof children === 'string' && /^[读听说]$/.test(children);
+  
   return (
     <Link
       href={href}
-      className={`px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm ${
+      className={`px-2 sm:px-3 py-1 rounded-md ${
+        isChinese ? 'text-base sm:text-lg font-medium' : 'text-xs sm:text-sm'
+      } ${
         current 
           ? 'bg-fl-salmon text-white' 
           : 'text-white hover:bg-fl-salmon/80'
